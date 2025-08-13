@@ -25,6 +25,10 @@ COPY uv.lock* .
 # Install dependencies with uv
 RUN uv sync --frozen
 
+# Activate the virtual environment by default
+ENV PATH="/app/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="/app/.venv"
+
 # Create work directory for user scripts
 RUN mkdir -p /work
 
