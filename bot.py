@@ -256,15 +256,15 @@ async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> 
             logging.info("📦 Uploaded script to container")
             
             # Execute in container with timeout
-            exec_config = {
-                "Cmd": ["/bin/sh", "-c", 
-                       "cd /work && timeout 25s /root/.local/bin/uv run python main.py"],
-                "AttachStdout": True,
-                "AttachStderr": True,
-                "Env": ["DISPLAY=:99", "PYTHONUNBUFFERED=1"]
-            }
+            exec_config = ["/bin/sh", "-c", 
+                          "cd /work && timeout 25s /root/.local/bin/uv run python main.py"]
             
-            exec_instance = await container.exec(**exec_config)
+            exec_instance = await container.exec(
+                cmd=exec_config,
+                stdout=True,
+                stderr=True,
+                environment=["DISPLAY=:99", "PYTHONUNBUFFERED=1"]
+            )
             logs = []
             
             # Collect logs with timeout
