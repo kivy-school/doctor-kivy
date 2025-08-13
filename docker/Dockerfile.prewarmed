@@ -20,7 +20,7 @@ WORKDIR /app
 
 # Copy project configuration from root (build context is root directory)
 COPY pyproject.toml .
-COPY uv.lock* ./
+COPY uv.lock ./
 
 # Install dependencies with uv
 RUN uv sync --frozen
