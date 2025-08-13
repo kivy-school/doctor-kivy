@@ -4,6 +4,8 @@ A Discord bot that can render Kivy applications and take screenshots, similar to
 
 > 🩺 I observe your code, inspect the widgets, and capture the diagnosis in a screenshot
 
+https://github.com/user-attachments/assets/07b83dbc-a284-4d1a-80fc-92c90051f2a8
+
 ## 🚀 Features
 
 - **Code Detection**: Automatically detects Python code blocks with Kivy imports
