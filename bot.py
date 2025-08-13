@@ -271,11 +271,18 @@ async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> 
             try:
                 async def collect_logs():
                     async with exec_instance.start() as stream:
-                        async for line in stream:
-                            log_line = line.decode('utf-8').strip()
-                            if log_line:
-                                logs.append(log_line)
-                                logging.info(f"📄 Container: {log_line}")
+                        while True:
+                            try:
+                                chunk = await stream.read_out()
+                                if chunk is None:
+                                    break
+                                log_line = chunk.data.decode('utf-8').strip()
+                                if log_line:
+                                    logs.append(log_line)
+                                    logging.info(f"📄 Container: {log_line}")
+                            except Exception as e:
+                                logging.debug(f"Stream read error: {e}")
+                                break
                 
                 await asyncio.wait_for(collect_logs(), timeout=30.0)
                 
