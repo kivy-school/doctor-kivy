@@ -294,32 +294,24 @@ async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> 
             try:
                 screenshot_tar = await container.get_archive("/work/kivy_screenshot.png")
                 
-                # Extract screenshot from tar - aiodocker returns async iterator
-                tar_chunks = []
-                async for chunk in screenshot_tar:
-                    tar_chunks.append(chunk)
+                # aiodocker returns TarFile directly, not async iterator
+                screenshot_member = screenshot_tar.getmember("kivy_screenshot.png")
+                screenshot_file = screenshot_tar.extractfile(screenshot_member)
                 
-                tar_data = b''.join(tar_chunks)
-                tar_stream = io.BytesIO(tar_data)
-                
-                with tarfile.open(fileobj=tar_stream, mode='r') as tar:
-                    screenshot_member = tar.getmember("kivy_screenshot.png")
-                    screenshot_file = tar.extractfile(screenshot_member)
+                if screenshot_file:
+                    screenshot_data = screenshot_file.read()
                     
-                    if screenshot_file:
-                        screenshot_data = screenshot_file.read()
+                    if len(screenshot_data) > 0:
+                        discord_file = discord.File(
+                            io.BytesIO(screenshot_data), 
+                            filename="kivy_screenshot.png"
+                        )
                         
-                        if len(screenshot_data) > 0:
-                            discord_file = discord.File(
-                                io.BytesIO(screenshot_data), 
-                                filename="kivy_screenshot.png"
-                            )
-                            
-                            logging.info(f"✅ Pre-warmed container render successful! Screenshot: {len(screenshot_data)} bytes")
-                            return {
-                                "content": "🎉 Here's your Kivy app screenshot! ⚡ (Pre-warmed container)",
-                                "files": [discord_file]
-                            }
+                        logging.info(f"✅ Pre-warmed container render successful! Screenshot: {len(screenshot_data)} bytes")
+                        return {
+                            "content": "🎉 Here's your Kivy app screenshot! ⚡ (Pre-warmed container)",
+                            "files": [discord_file]
+                        }
                         
             except Exception as e:
                 logging.warning(f"Screenshot extraction failed: {e}")
