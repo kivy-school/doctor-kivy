@@ -1,18 +1,26 @@
 #!/bin/bash
-# Setup script for Kivy Docker renderer
+# Build script for Doctor Kivy Docker images
 
-echo "🐳 Setting up Kivy Docker renderer..."
+echo "🏗️ Building Doctor Kivy Docker Images..."
 
-# Build the Docker image
-echo "Building Kivy Docker image..."
+# Build main image
+echo "📦 Building main kivy-renderer:latest image..."
 docker build -t kivy-renderer:latest .
-
-if [ $? -eq 0 ]; then
-    echo "✅ Docker image built successfully!"
-    echo "🚀 You can now run the bot and it will be able to render Kivy snippets"
-else
-    echo "❌ Failed to build Docker image"
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to build main image"
     exit 1
 fi
 
-echo "🎉 Setup complete!"
+# Build prewarmed image with correct context
+echo "🔥 Building prewarmed image..."
+docker build -t kivy-renderer:prewarmed -f docker/Dockerfile.prewarmed .
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to build prewarmed image"
+    exit 1
+fi
+
+echo "✅ All images built successfully!"
+
+# List images
+echo "📋 Docker images:"
+docker images | grep kivy-renderer
