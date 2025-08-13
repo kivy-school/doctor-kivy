@@ -32,6 +32,13 @@ uv python install 3.11
 **On Linux/Mac:**
 ```bash
 docker build -t kivy-renderer:latest .
+docker build -t kivy-renderer:prewarmed -f docker/Dockerfile.prewarmed .
+```
+
+**Option 2: Using setup script**
+```bash
+chmod +x setup_docker.sh
+./setup_docker.sh
 ```
 
 ### 3. Environment Setup
@@ -48,6 +55,8 @@ uv run bot.py
 ```
 
 ## 🎯 Usage
+
+After adding the bot to your Discord server:
 
 1. **Post Kivy Code**: Send a message with Python code blocks containing Kivy imports:
 
@@ -90,9 +99,12 @@ MyApp().run()
 
 ```
 doctor-kivy/
-├── bot.py               # Main bot code
-├── Dockerfile           # Kivy rendering environment
-└── setup_docker.sh/.bat # Setup scripts
+├── bot.py                        # Main bot code
+├── docker/                       # Docker configuration
+│   ├── Dockerfile.prewarmed      # Pre-warmed container image
+│   └── requirements.txt          # Python dependencies for containers
+├── Dockerfile                    # Main Kivy rendering environment
+└── setup_docker.sh               # Linux/Mac setup script
 ```
 
 ## 🔧 Configuration
@@ -121,4 +133,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Inspired by the [Manim Community Discord Bot](https://github.com/ManimCommunity/DiscordManimator)
 - Built with [discord.py](https://github.com/Rapptz/discord.py)
 - Rendering powered by [Kivy](https://github.com/kivy/kivy)
-
