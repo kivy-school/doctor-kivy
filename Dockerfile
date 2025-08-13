@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsdl2-2.0-0 \
     curl \
     libmtdev1 \
+    x11-utils \
     && rm -rf /var/lib/apt/lists/*
  
 # Install uv
@@ -17,6 +18,19 @@ ENV PATH="/root/.local/bin:$PATH"
 # Create app directory
 WORKDIR /app
 
-# Initialize uv project and add dependencies
-RUN uv init
-RUN uv add kivy-reloader pillow
+# Copy project files
+COPY pyproject.toml .
+COPY uv.lock* .
+
+# Install dependencies with uv
+RUN uv sync --frozen
+
+# Create work directory for user scripts
+RUN mkdir -p /work
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV DISPLAY=:99
+
+# Default command (can be overridden)
+CMD ["tail", "-f", "/dev/null"]

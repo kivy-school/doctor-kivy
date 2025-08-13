@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  kivy-renderer:
+    build:
+      context: ./docker/prewarmed
+      dockerfile: Dockerfile.prewarmed
+    image: kivy-renderer:latest
+    restart: always
+    volumes:
+      - ./runs:/work
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+
+  bot:
+    build:
+      context: ./src
+    image: kivy-discord-bot:latest
+    restart: always
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+    depends_on:
+      - kivy-renderer
+    volumes:
+      - ./src:/app
+      - ./config:/config
+
+networks:
+  default:
+    driver: bridge
