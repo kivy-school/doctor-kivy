@@ -238,6 +238,16 @@ async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> 
     
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
+            # Clean old screenshot from container before starting
+            cleanup_exec = await container.exec(
+                cmd=["/bin/sh", "-c", "rm -f /work/kivy_screenshot.png"],
+                stdout=True,
+                stderr=True
+            )
+            async with cleanup_exec.start() as _:
+                pass  # Wait for cleanup to complete
+            logging.info("🧹 Cleaned old screenshot from container")
+            
             # Prepare script
             script_path = Path(tmpdir) / "main.py" 
             kivy_script = prepare_kivy_script(code)
