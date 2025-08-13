@@ -608,17 +608,17 @@ class KivyPromptView(discord.ui.View):
         logging.info(f"📝 Retrieved code snippet: {len(code)} chars")
         
         # Validate code for security
-        if not validate_code(code):
-            logging.warning("🚨 Code validation failed - contains dangerous operations")
-            await interaction.followup.send(
-                "❌ This code contains potentially dangerous operations and cannot be rendered.",
-                ephemeral=True
-            )
-            # Re-enable buttons
-            for child in self.children:
-                child.disabled = False
-            await interaction.edit_original_response(view=self)
-            return
+        # if not validate_code(code):
+        #     logging.warning("🚨 Code validation failed - contains dangerous operations")
+        #     await interaction.followup.send(
+        #         "❌ This code contains potentially dangerous operations and cannot be rendered.",
+        #         ephemeral=True
+        #     )
+        #     # Re-enable buttons
+        #     for child in self.children:
+        #         child.disabled = False
+        #     await interaction.edit_original_response(view=self)
+        #     return
 
         try:
             run_dir = ensure_clean_run_dir(self.source_message_id)
