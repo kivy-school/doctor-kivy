@@ -1,0 +1,6 @@
+# This file lists the dependencies required for the project.
+
+discord.py
+kivy-reloader
+aiodocker
+python-dotenv
