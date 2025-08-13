@@ -48,7 +48,7 @@ def take_screenshot_and_exit(_dt):
 
 def arm_once(*_):
     Window.unbind(on_flip=arm_once)
-    Clock.schedule_once(take_screenshot_and_exit, 15)
+    Clock.schedule_once(take_screenshot_and_exit, 0)
 
 Window.bind(on_flip=arm_once)
 
