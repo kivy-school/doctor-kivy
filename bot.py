@@ -294,9 +294,15 @@ async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> 
             try:
                 screenshot_tar = await container.get_archive("/work/kivy_screenshot.png")
                 
-                # Extract screenshot from tar
-                tar_data = io.BytesIO(screenshot_tar)
-                with tarfile.open(fileobj=tar_data, mode='r') as tar:
+                # Extract screenshot from tar - aiodocker returns async iterator
+                tar_chunks = []
+                async for chunk in screenshot_tar:
+                    tar_chunks.append(chunk)
+                
+                tar_data = b''.join(tar_chunks)
+                tar_stream = io.BytesIO(tar_data)
+                
+                with tarfile.open(fileobj=tar_stream, mode='r') as tar:
                     screenshot_member = tar.getmember("kivy_screenshot.png")
                     screenshot_file = tar.extractfile(screenshot_member)
                     
