@@ -668,7 +668,7 @@ async def on_ready():
     global container_pool
     try:
         logging.info("🔥 Initializing pre-warmed container pool...")
-        container_pool = SimpleContainerPool("kivy-renderer:latest", 2)
+        container_pool = SimpleContainerPool("kivy-renderer:prewarmed", 2)
         await container_pool.initialize()
         
         if container_pool.initialized:
