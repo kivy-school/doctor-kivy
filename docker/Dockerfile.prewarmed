@@ -36,8 +36,8 @@ RUN mkdir -p /work
 ENV PYTHONUNBUFFERED=1
 ENV DISPLAY=:99
 
-# Copy entrypoint script (from docker/prewarmed/ directory)
-COPY docker/prewarmed/entrypoint.sh /entrypoint.sh
+# Copy entrypoint script (from docker/ directory)
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Use entrypoint for pre-warming
