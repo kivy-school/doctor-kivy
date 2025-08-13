@@ -267,14 +267,15 @@ async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> 
             )
             logs = []
             
-            # Collect logs with timeout
+            # Collect logs with timeout - using start() to get the stream
             try:
                 async def collect_logs():
-                    async for line in exec_instance:
-                        log_line = line.decode('utf-8').strip()
-                        if log_line:
-                            logs.append(log_line)
-                            logging.info(f"📄 Container: {log_line}")
+                    async with exec_instance.start() as stream:
+                        async for line in stream:
+                            log_line = line.decode('utf-8').strip()
+                            if log_line:
+                                logs.append(log_line)
+                                logging.info(f"📄 Container: {log_line}")
                 
                 await asyncio.wait_for(collect_logs(), timeout=30.0)
                 
