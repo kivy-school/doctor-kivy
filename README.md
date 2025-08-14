@@ -4,7 +4,7 @@ A Discord bot that can render Kivy applications and take screenshots, similar to
 
 > 🩺 I observe your code, inspect the widgets, and capture the diagnosis in a screenshot
 
-https://github.com/user-attachments/assets/07b83dbc-a284-4d1a-80fc-92c90051f2a8
+https://github.com/user-attachments/assets/c8237d21-bdea-4869-9f2b-996ef2daf9d7
 
 ## 🚀 Features
 
