@@ -27,9 +27,9 @@ https://github.com/user-attachments/assets/c8237d21-bdea-4869-9f2b-996ef2daf9d7
 uv python install 3.11
 ```
 
-### 2. Build Docker Image
+### 2. Build Docker Image (Linux/Mac)
 
-**On Linux/Mac:**
+**Option 1: Manual Build**
 ```bash
 docker build -t kivy-renderer:latest .
 docker build -t kivy-renderer:prewarmed -f docker/Dockerfile.prewarmed .
