@@ -484,7 +484,9 @@ async def render_kivy_snippet(interaction: discord.Interaction, code: str) -> Di
 def prepare_kivy_script(user_code: str) -> str:
     """
     Prepares the Kivy script for execution in Docker.
-    Uses Window.on_flip to detect first frame, then schedules screenshot after 2 seconds.
+    Uses Window.on_flip to detect first frame, then schedules screenshot after first frame
+    Draws an opaque background using the user's Window.clearcolor
+
     """
     template = '''
 from kivy.core.window import Window
@@ -505,25 +507,30 @@ def _install_bg():
 
 def take_screenshot_and_exit(_dt):
     try:
-        screenshot_path = '/work/kivy_screenshot.png'
-        print("Attempting to save screenshot to:", screenshot_path)
-
-        if os.path.exists(screenshot_path):
-            print("Screenshot file already exists. Deleting it...")
-            os.remove(screenshot_path)
+        target_path = '/work/kivy_screenshot.png'
+        print("Attempting to save screenshot to:", target_path)
 
         # Always use Window.screenshot (reads GL RGB buffer)
-        path = Window.screenshot(name=screenshot_path)
-        print("Window.screenshot saved to:", path)
+        actual_path = Window.screenshot(name=target_path)
+        print("Window.screenshot saved to:", actual_path)
 
-        if os.path.exists(screenshot_path):
-            file_size = os.path.getsize(screenshot_path)
+        # If Kivy auto-numbered (…0001.png), normalize to the expected filename
+        if actual_path and actual_path != target_path:
+            try:
+                if os.path.exists(target_path):
+                    os.remove(target_path)
+                os.replace(actual_path, target_path)
+                print("Renamed", actual_path, "->", target_path)
+            except Exception as e:
+                print("Rename failed:", e)
+
+        if os.path.exists(target_path):
+            file_size = os.path.getsize(target_path)
             print("Screenshot saved successfully. File size:", file_size, "bytes")
         else:
-            print("ERROR: Screenshot file not found at:", screenshot_path)
+            print("ERROR: Screenshot file not found at:", target_path)
             try:
-                work_files = os.listdir('/work')
-                print("Files in /work:", work_files)
+                print("Files in /work:", os.listdir('/work'))
             except Exception as e:
                 print("Failed to list /work:", e)
 
@@ -541,7 +548,7 @@ def take_screenshot_and_exit(_dt):
 
 def arm_once(*_):
     Window.unbind(on_flip=arm_once)
-    _install_bg()                   # draw opaque background into the on-screen buffer
+    _install_bg()                                     # draw opaque background into the on-screen buffer
     Clock.schedule_once(take_screenshot_and_exit, 0)  # next frame to ensure it's rendered
 
 Window.bind(on_flip=arm_once)
