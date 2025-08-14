@@ -8,3 +8,6 @@ cmd = (
 )
 
 subprocess.run(cmd, shell=True, check=True)
+print("Bot started in detached screen session named 'bot'.")
+print("Run 'screen -r bot' to attach to the session. Press Ctrl+A D to detach.")
+print("Run 'tail -f /var/log/doctor-kivy.log' to view the logs.")
