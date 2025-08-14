@@ -7,7 +7,7 @@ export WIDTH=${WIDTH:-800}
 export HEIGHT=${HEIGHT:-600}
 
 # Start the X virtual framebuffer
-Xvfb :99 -screen 0 ${WIDTH}x${HEIGHT}x24 -nolisten tcp &
+Xvfb :99 -screen 0 ${WIDTH}x${HEIGHT}x24 -nolisten tcp -br &
 
 # Wait for Xvfb to be ready
 for i in $(seq 1 50); do
