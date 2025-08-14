@@ -511,12 +511,11 @@ def take_screenshot_and_exit(_dt):
         if os.path.exists(screenshot_path):
             print("Screenshot file already exists. Deleting it...")
             os.remove(screenshot_path)
-            
+
         # Always use Window.screenshot (reads GL RGB buffer)
         path = Window.screenshot(name=screenshot_path)
         print("Window.screenshot saved to:", path)
 
-        import os
         if os.path.exists(screenshot_path):
             file_size = os.path.getsize(screenshot_path)
             print("Screenshot saved successfully. File size:", file_size, "bytes")
