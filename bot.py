@@ -492,6 +492,7 @@ from kivy.clock import Clock
 from kivy.app import App
 from kivy.app import stopTouchApp
 from kivy.graphics import Color, Rectangle
+import os
 
 def _install_bg():
     r, g, b, _ = Window.clearcolor  # respect user's color
@@ -507,6 +508,10 @@ def take_screenshot_and_exit(_dt):
         screenshot_path = '/work/kivy_screenshot.png'
         print("Attempting to save screenshot to:", screenshot_path)
 
+        if os.path.exists(screenshot_path):
+            print("Screenshot file already exists. Deleting it...")
+            os.remove(screenshot_path)
+            
         # Always use Window.screenshot (reads GL RGB buffer)
         path = Window.screenshot(name=screenshot_path)
         print("Window.screenshot saved to:", path)
