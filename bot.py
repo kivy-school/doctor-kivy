@@ -79,7 +79,7 @@ class SimpleContainerPool:
         container_config = {
             "Image": self.image,
             "Cmd": ["/bin/sh", "-c", 
-                "Xvfb :99 -screen 0 800x600x24 -nolisten tcp -br & "
+                "Xvfb :99 -screen 0 800x600x24 -nolisten tcp & "
                 "sleep 3 && "  # Wait for Xvfb
                 "export DISPLAY=:99 && "
                 "xsetroot -solid '#222244' && "  # Set custom background color
@@ -375,7 +375,7 @@ async def render_kivy_snippet(interaction: discord.Interaction, code: str) -> Di
                     "/bin/sh", "-lc",
                     # start Xvfb, wait for readiness, run, then clean up
                     'set -e; '
-                    'Xvfb :99 -screen 0 ${WIDTH:-800}x${HEIGHT:-600}x24 -nolisten tcp -br & xp=$!; '
+                    'Xvfb :99 -screen 0 ${WIDTH:-800}x${HEIGHT:-600}x24 -nolisten tcp & xp=$!; '
                     'for i in $(seq 1 50); do DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && break; sleep 0.1; done; '
                     'DISPLAY=:99 timeout 25s /app/.venv/bin/python /work/main.py; '
                     'status=$?; kill "$xp"; wait "$xp" 2>/dev/null || true; exit $status'
