@@ -491,38 +491,40 @@ from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.app import App
 from kivy.app import stopTouchApp
+from kivy.graphics import Color, Rectangle
+
+def _install_bg():
+    r, g, b, _ = Window.clearcolor  # respect user's color
+    with Window.canvas.before:
+        bg_color = Color(r, g, b, 1)      # force opaque alpha
+        bg_rect = Rectangle(pos=(0, 0), size=Window.size)
+    def _on_resize(*_):
+        bg_rect.size = Window.size
+    Window.bind(size=_on_resize)
 
 def take_screenshot_and_exit(_dt):
     try:
-        # Use absolute path to ensure file is saved in the right location
         screenshot_path = '/work/kivy_screenshot.png'
-        print("Attempting to save screenshot to: ", screenshot_path)
+        print("Attempting to save screenshot to:", screenshot_path)
 
-        # Prefer exporting the root to keep exact filename:
-        from kivy.base import EventLoop
-        root = EventLoop.window.children[0] if EventLoop.window.children else None
-        if root and hasattr(root, 'export_to_png'):
-            print("Using root.export_to_png method")
-            root.export_to_png(screenshot_path)
-        else:
-            # Window.screenshot may auto-number; returns the actual path used:
-            print("Using Window.screenshot method")
-            path = Window.screenshot(name=screenshot_path)
-            print("Window.screenshot saved to: ", path)
+        # Always use Window.screenshot (reads GL RGB buffer)
+        path = Window.screenshot(name=screenshot_path)
+        print("Window.screenshot saved to:", path)
 
-        # Check if file was actually created
         import os
         if os.path.exists(screenshot_path):
             file_size = os.path.getsize(screenshot_path)
-            print("Screenshot saved successfully! File size: ", file_size, "bytes")
+            print("Screenshot saved successfully. File size:", file_size, "bytes")
         else:
-            print("ERROR: Screenshot file not found at: ", screenshot_path)
-            # List files in /work directory
-            work_files = os.listdir('/work')
-            print("Files in /work: ", work_files)
+            print("ERROR: Screenshot file not found at:", screenshot_path)
+            try:
+                work_files = os.listdir('/work')
+                print("Files in /work:", work_files)
+            except Exception as e:
+                print("Failed to list /work:", e)
 
     except Exception as e:
-        print("Screenshot failed: ", e)
+        print("Screenshot failed:", e)
         import traceback
         traceback.print_exc()
     finally:
@@ -534,9 +536,9 @@ def take_screenshot_and_exit(_dt):
         exit()
 
 def arm_once(*_):
-    # IMPORTANT: unbind so we don't schedule every frame
     Window.unbind(on_flip=arm_once)
-    Clock.schedule_once(take_screenshot_and_exit, 0)
+    _install_bg()                   # draw opaque background into the on-screen buffer
+    Clock.schedule_once(take_screenshot_and_exit, 0)  # next frame to ensure it's rendered
 
 Window.bind(on_flip=arm_once)
 
