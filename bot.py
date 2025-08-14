@@ -79,12 +79,12 @@ class SimpleContainerPool:
         container_config = {
             "Image": self.image,
             "Cmd": ["/bin/sh", "-c", 
-                   # Start Xvfb and keep container alive
-                   "Xvfb :99 -screen 0 800x600x24 -nolisten tcp -br & "
-                   "sleep 3 && "  # Wait for Xvfb
-                   "export DISPLAY=:99 && "
-                   "echo 'Container ready for rendering!' && "
-                   "while true; do sleep 30; done"],
+                "Xvfb :99 -screen 0 800x600x24 -nolisten tcp -br & "
+                "sleep 3 && "  # Wait for Xvfb
+                "export DISPLAY=:99 && "
+                "xsetroot -solid '#222244' && "  # Set custom background color
+                "echo 'Container ready for rendering!' && "
+                "while true; do sleep 30; done"],
             "Env": ["DISPLAY=:99", "PYTHONUNBUFFERED=1"],
             "WorkingDir": "/app",
             "HostConfig": {
