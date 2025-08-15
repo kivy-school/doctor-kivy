@@ -72,7 +72,10 @@ class SimpleContainerPool:
             
             # Test if Docker is available
             await self.docker_client.version()
-            
+
+            # Kill any existing containers in the pool
+            await self._kill_existing_pool()
+
             logging.info(f"🔥 Initializing {self.pool_size} pre-warmed containers...")
             
             for i in range(self.pool_size):
