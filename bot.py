@@ -8,6 +8,7 @@ import signal
 import sys
 import tarfile
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -15,6 +16,8 @@ import aiodocker
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+
+from metrics import Metrics
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -27,6 +30,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+metrics = Metrics("./metrics.db")
 
 # Simple per-process memory: message_id -> dict(info)
 PENDING_SNIPPETS: dict[int, dict] = {}
@@ -167,6 +171,7 @@ container_pool: Optional[SimpleContainerPool] = None
 def _install_sigterm_cleanup():
     def _handler(signum, frame):
         try:
+            metrics.close()
             if container_pool:
                 asyncio.run(container_pool.cleanup())
         finally:
@@ -375,6 +380,7 @@ async def render_kivy_with_pool(
                         logging.info(
                             f"✅ Pre-warmed container render successful! Screenshot: {len(screenshot_data)} bytes"
                         )
+                        metrics.observe_screenshot_bytes(len(screenshot_data))
                         return {
                             "content": "🎉 Here's your Kivy app screenshot!",
                             "files": [discord_file],
@@ -521,6 +527,7 @@ async def render_kivy_snippet(
 
             if screenshot_path.exists():
                 file_size = screenshot_path.stat().st_size
+                metrics.observe_screenshot_bytes(file_size)
                 logging.info(f"✅ Screenshot found! Size: {file_size} bytes")
                 return {
                     "content": "🎉 Here's your Kivy app screenshot!",
@@ -638,12 +645,28 @@ async def placeholder_render_call(
     logging.info(f"📝 Code length: {len(code)} characters")
     logging.info(f"📁 Run directory: {run_dir}")
 
+    start = time.monotonic()
+    metrics.inc_attempted()
     try:
         # Try pre-warmed container first, fallback to original method
         if container_pool and container_pool.initialized:
             result = await render_kivy_with_pool(interaction, code)
         else:
             result = await render_kivy_snippet(interaction, code)
+
+        success = bool(
+            isinstance(result, dict)
+            and result.get("files")
+            and any(
+                getattr(f, "filename", "").endswith(".png") for f in result["files"]
+            )
+        )
+        if success:
+            metrics.inc_success()
+        else:
+            metrics.inc_failure()
+
+        metrics.observe_duration(time.monotonic() - start)
 
         logging.info(
             f"✅ Render successful, sending result: {result.get('content', 'No content')[:50]}..."
@@ -652,6 +675,8 @@ async def placeholder_render_call(
             **result, ephemeral=False
         )  # Make it visible to everyone
     except Exception as e:
+        metrics.inc_failure()
+        metrics.observe_duration(time.monotonic() - start)
         logging.error(f"💥 Error in placeholder_render_call: {e}", exc_info=True)
         await interaction.followup.send(
             f"❌ Something went wrong: {str(e)}",
@@ -894,7 +919,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logging.info("🛑 Bot shutdown requested")
         print("🛑 Bot shutdown requested")
-
+        metrics.close()
         # Cleanup container pool if it exists
         if container_pool:
             logging.info("🧹 Cleaning up container pool...")
@@ -903,7 +928,7 @@ if __name__ == "__main__":
     except Exception as e:
         logging.error(f"Failed to start bot: {e}")
         print(f"❌ Failed to start bot: {e}")
-
+        metrics.close()
         # Cleanup on error too
         if container_pool:
             try:
