@@ -118,7 +118,7 @@ class SimpleContainerPool:
             }
         }
         
-        container = await self.docker_client.containers.create(container_config)
+        container = await self.docker_client.containers.create(container_config, name=name)
         await container.start()
         
         # Wait for Xvfb to be ready
