@@ -1,19 +1,20 @@
+import asyncio
+import io
+import logging
 import os
 import re
 import shutil
-import logging
-import asyncio
 import signal
-import tempfile
-import io
 import sys
 import tarfile
+import tempfile
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import aiodocker
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-import aiodocker
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -41,7 +42,7 @@ POOL_LABELS = {"app": "doctor-kivy", "role": "kivy-pool"}
 # Pre-warmed Container Pool Implementation
 class SimpleContainerPool:
     """Simple container pool for pre-warmed Kivy rendering containers"""
-    
+
     def __init__(self, image: str, pool_size: int = 2):
         self.image = image
         self.pool_size = pool_size
@@ -52,8 +53,7 @@ class SimpleContainerPool:
     async def _kill_existing_pool(self):
         # remove any leftover containers from previous runs
         existing = await self.docker_client.containers.list(
-            all=True,
-            filters={"label": ["app=doctor-kivy", "role=kivy-pool"]}
+            all=True, filters={"label": ["app=doctor-kivy", "role=kivy-pool"]}
         )
         for c in existing:
             try:
@@ -64,12 +64,12 @@ class SimpleContainerPool:
                 await c.delete(force=True)
             except Exception:
                 pass
-        
+
     async def initialize(self):
         """Initialize the container pool"""
         try:
             self.docker_client = aiodocker.Docker()
-            
+
             # Test if Docker is available
             await self.docker_client.version()
 
@@ -77,36 +77,41 @@ class SimpleContainerPool:
             await self._kill_existing_pool()
 
             logging.info(f"🔥 Initializing {self.pool_size} pre-warmed containers...")
-            
+
             for i in range(self.pool_size):
                 try:
                     container = await self._create_prewarmed_container(f"kivy-pool-{i}")
                     await self.available_containers.put(container)
-                    logging.info(f"✅ Created pre-warmed container {i+1}/{self.pool_size}")
+                    logging.info(
+                        f"✅ Created pre-warmed container {i + 1}/{self.pool_size}"
+                    )
                     await asyncio.sleep(1)  # Small delay between containers
                 except Exception as e:
-                    logging.error(f"❌ Failed to create container {i+1}: {e}")
-            
+                    logging.error(f"❌ Failed to create container {i + 1}: {e}")
+
             self.initialized = True
             queue_size = self.available_containers.qsize()
             logging.info(f"🚀 Container pool initialized with {queue_size} containers!")
-            
+
         except Exception as e:
             logging.error(f"❌ Failed to initialize container pool: {e}")
             self.initialized = False
             if self.docker_client:
                 await self.docker_client.close()
-    
+
     async def _create_prewarmed_container(self, name: str):
         """Create a pre-warmed container with Xvfb running"""
         container_config = {
             "Image": self.image,
-            "Cmd": ["/bin/sh", "-c", 
+            "Cmd": [
+                "/bin/sh",
+                "-c",
                 "Xvfb :99 -screen 0 800x600x24 -nolisten tcp & "
                 "sleep 3 && "  # Wait for Xvfb
                 "export DISPLAY=:99 && "
                 "echo 'Container ready for rendering!' && "
-                "while true; do sleep 30; done"],
+                "while true; do sleep 30; done",
+            ],
             "Env": ["DISPLAY=:99", "PYTHONUNBUFFERED=1"],
             "WorkingDir": "/app",
             "Labels": POOL_LABELS,
@@ -114,16 +119,18 @@ class SimpleContainerPool:
                 "Memory": 512 * 1024 * 1024,
                 "CpuQuota": 50000,
                 "NetworkMode": "none",
-                "AutoRemove": True
-            }
+                "AutoRemove": True,
+            },
         }
-        
-        container = await self.docker_client.containers.create(container_config, name=name)
+
+        container = await self.docker_client.containers.create(
+            container_config, name=name
+        )
         await container.start()
-        
+
         # Wait for Xvfb to be ready
         await asyncio.sleep(5)
-        
+
         return container
 
     async def get_container(self):
@@ -134,12 +141,12 @@ class SimpleContainerPool:
             return await asyncio.wait_for(self.available_containers.get(), timeout=1.0)
         except asyncio.TimeoutError:
             return None
-    
+
     async def return_container(self, container):
         """Return a container to the pool"""
         if self.initialized and container:
             await self.available_containers.put(container)
-    
+
     async def cleanup(self):
         """Clean up all containers"""
         if self.docker_client:
@@ -152,8 +159,10 @@ class SimpleContainerPool:
             await self._kill_existing_pool()
             await self.docker_client.close()
 
+
 # Global container pool
 container_pool: Optional[SimpleContainerPool] = None
+
 
 def _install_sigterm_cleanup():
     def _handler(signum, frame):
@@ -162,11 +171,13 @@ def _install_sigterm_cleanup():
                 asyncio.run(container_pool.cleanup())
         finally:
             os._exit(0)
+
     signal.signal(signal.SIGTERM, _handler)
 
 
 class KivyRenderError(Exception):
     """Custom exception for Kivy rendering errors"""
+
     def __init__(self, message: str, logs: list = None):
         self.message = message
         self.logs = logs or []
@@ -198,7 +209,7 @@ def looks_like_kivy(code: str) -> bool:
     Checks if code contains actual Kivy imports.
     And if it runs a Kivy app.
     """
-    runs = ['.run()', 'runTouchApp(', 'async_runTouchApp', 'trio.run']
+    runs = [".run()", "runTouchApp(", "async_runTouchApp", "trio.run"]
 
     if not any(run in code for run in runs):
         return False
@@ -209,37 +220,37 @@ def looks_like_kivy(code: str) -> bool:
         return True
     if "import kivy" in lowered:
         return True
-    
+
     # Check for Kivy reloader imports
     if "from kivy_reloader.app" in lowered:
         return True
     if "import kivy_reloader" in lowered:
         return True
-        
+
     # Check for KivyMD imports
     if "from kivymd.app" in lowered:
         return True
     if "import kivymd" in lowered:
         return True
-    
+
     return False
 
 
 def validate_code(code: str) -> bool:
     """Basic validation to prevent malicious code execution"""
     dangerous_patterns = [
-        'import os',
-        'import subprocess', 
-        'import sys',
-        '__import__',
-        'eval(',
-        'exec(',
-        'open(',
-        'file(',
-        'input(',
-        'raw_input(',
+        "import os",
+        "import subprocess",
+        "import sys",
+        "__import__",
+        "eval(",
+        "exec(",
+        "open(",
+        "file(",
+        "input(",
+        "raw_input(",
     ]
-    
+
     code_lower = code.lower()
     for pattern in dangerous_patterns:
         if pattern in code_lower:
@@ -255,63 +266,73 @@ def ensure_clean_run_dir(message_id: int) -> Path:
     return run_dir
 
 
-async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> Dict[str, Any]:
+async def render_kivy_with_pool(
+    interaction: discord.Interaction, code: str
+) -> Dict[str, Any]:
     """Optimized render function using pre-warmed container pool"""
     if not container_pool or not container_pool.initialized:
         # Fallback to original method if pool not ready
-        logging.warning("⚠️ Container pool not available, falling back to original method")
+        logging.warning(
+            "⚠️ Container pool not available, falling back to original method"
+        )
         return await render_kivy_snippet(interaction, code)
-    
+
     logging.info("🚀 Using pre-warmed container from pool")
     container = await container_pool.get_container()
-    
+
     if not container:
-        logging.warning("⚠️ No containers available in pool, falling back to original method")
+        logging.warning(
+            "⚠️ No containers available in pool, falling back to original method"
+        )
         return await render_kivy_snippet(interaction, code)
-    
+
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Clean old screenshot from container before starting
             cleanup_exec = await container.exec(
                 cmd=["/bin/sh", "-c", "rm -f /work/kivy_screenshot.png"],
                 stdout=True,
-                stderr=True
+                stderr=True,
             )
             async with cleanup_exec.start() as _:
                 pass  # Wait for cleanup to complete
             logging.info("🧹 Cleaned old screenshot from container")
-            
+
             # Prepare script
-            script_path = Path(tmpdir) / "main.py" 
+            script_path = Path(tmpdir) / "main.py"
             kivy_script = prepare_kivy_script(code)
             script_path.write_text(kivy_script, encoding="utf-8")
-            
+
             logging.info(f"📝 Prepared script in {tmpdir}")
-            
+
             # Create tar archive for Docker container
             tar_buffer = io.BytesIO()
-            with tarfile.open(fileobj=tar_buffer, mode='w') as tar:
+            with tarfile.open(fileobj=tar_buffer, mode="w") as tar:
                 tar.add(script_path, arcname="main.py")
             tar_buffer.seek(0)
-            
+
             # Copy script to container
             await container.put_archive("/work", tar_buffer.read())
             logging.info("📦 Uploaded script to container")
-            
+
             # Execute in container with timeout
-            exec_config = ["/bin/sh", "-c", 
-                          "cd /work && timeout 25s /root/.local/bin/uv run python main.py"]
-            
+            exec_config = [
+                "/bin/sh",
+                "-c",
+                "cd /work && timeout 25s /root/.local/bin/uv run python main.py",
+            ]
+
             exec_instance = await container.exec(
                 cmd=exec_config,
                 stdout=True,
                 stderr=True,
-                environment=["DISPLAY=:99", "PYTHONUNBUFFERED=1"]
+                environment=["DISPLAY=:99", "PYTHONUNBUFFERED=1"],
             )
             logs = []
-            
+
             # Collect logs with timeout - using start() to get the stream
             try:
+
                 async def collect_logs():
                     async with exec_instance.start() as stream:
                         while True:
@@ -319,58 +340,61 @@ async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> 
                                 chunk = await stream.read_out()
                                 if chunk is None:
                                     break
-                                log_line = chunk.data.decode('utf-8').strip()
+                                log_line = chunk.data.decode("utf-8").strip()
                                 if log_line:
                                     logs.append(log_line)
                                     logging.info(f"📄 Container: {log_line}")
                             except Exception as e:
                                 logging.debug(f"Stream read error: {e}")
                                 break
-                
+
                 await asyncio.wait_for(collect_logs(), timeout=30.0)
-                
+
             except asyncio.TimeoutError:
                 logging.warning("⏰ Pre-warmed container execution timed out")
                 return {"content": "⏰ Rendering timed out after 30 seconds."}
-            
+
             # Get screenshot from container
             try:
-                screenshot_tar = await container.get_archive("/work/kivy_screenshot.png")
-                
+                screenshot_tar = await container.get_archive(
+                    "/work/kivy_screenshot.png"
+                )
+
                 # aiodocker returns TarFile directly, not async iterator
                 screenshot_member = screenshot_tar.getmember("kivy_screenshot.png")
                 screenshot_file = screenshot_tar.extractfile(screenshot_member)
-                
+
                 if screenshot_file:
                     screenshot_data = screenshot_file.read()
-                    
+
                     if len(screenshot_data) > 0:
                         discord_file = discord.File(
-                            io.BytesIO(screenshot_data), 
-                            filename="kivy_screenshot.png"
+                            io.BytesIO(screenshot_data), filename="kivy_screenshot.png"
                         )
-                        
-                        logging.info(f"✅ Pre-warmed container render successful! Screenshot: {len(screenshot_data)} bytes")
+
+                        logging.info(
+                            f"✅ Pre-warmed container render successful! Screenshot: {len(screenshot_data)} bytes"
+                        )
                         return {
                             "content": "🎉 Here's your Kivy app screenshot!",
-                            "files": [discord_file]
+                            "files": [discord_file],
                         }
-                        
+
             except Exception as e:
                 logging.warning(f"Screenshot extraction failed: {e}")
-                
+
             # Return logs if screenshot failed
             logs_content = "\n".join(logs[-50:]) if logs else "No logs collected"
             return {
                 "content": "❌ Failed to generate screenshot (pre-warmed):",
                 "files": [
                     discord.File(
-                        fp=io.BytesIO(logs_content.encode('utf-8')),
-                        filename="prewarmed_logs.txt"
+                        fp=io.BytesIO(logs_content.encode("utf-8")),
+                        filename="prewarmed_logs.txt",
                     )
-                ]
+                ],
             }
-                
+
     except Exception as e:
         logging.error(f"💥 Pre-warmed container failed: {e}")
         # Fallback to original method
@@ -380,78 +404,83 @@ async def render_kivy_with_pool(interaction: discord.Interaction, code: str) -> 
         await container_pool.return_container(container)
 
 
-async def render_kivy_snippet(interaction: discord.Interaction, code: str) -> Dict[str, Any]:
+async def render_kivy_snippet(
+    interaction: discord.Interaction, code: str
+) -> Dict[str, Any]:
     """
     Renders Kivy code in a Docker container and returns the result.
     Similar to Manim's render_animation_snippet but for Kivy apps.
     """
     logging.info("🚀 Starting Kivy snippet rendering")
     dockerclient = aiodocker.Docker()
-    
+
     # Prepare the Kivy script
     kivy_script = prepare_kivy_script(code)
     logging.info(f"📝 Prepared Kivy script ({len(kivy_script)} chars)")
-    
+
     with tempfile.TemporaryDirectory() as tmpdirname:
         logging.info(f"📁 Created temporary directory: {tmpdirname}")
-        
+
         # Write script to temporary directory
         script_path = Path(tmpdirname) / "main.py"
         script_path.write_text(kivy_script, encoding="utf-8")
         logging.info(f"💾 Wrote script to: {script_path}")
-        
+
         try:
             # Set up Docker container configuration
             container_config = {
                 "Image": "kivy-renderer:latest",
                 "Cmd": [
-                    "/bin/sh", "-lc",
+                    "/bin/sh",
+                    "-lc",
                     # start Xvfb, wait for readiness, run, then clean up
-                    'set -e; '
-                    'Xvfb :99 -screen 0 ${WIDTH:-800}x${HEIGHT:-600}x24 -nolisten tcp & xp=$!; '
-                    'for i in $(seq 1 50); do DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && break; sleep 0.1; done; '
-                    'DISPLAY=:99 timeout 25s /app/.venv/bin/python /work/main.py; '
-                    'status=$?; kill "$xp"; wait "$xp" 2>/dev/null || true; exit $status'
+                    "set -e; "
+                    "Xvfb :99 -screen 0 ${WIDTH:-800}x${HEIGHT:-600}x24 -nolisten tcp & xp=$!; "
+                    "for i in $(seq 1 50); do DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && break; sleep 0.1; done; "
+                    "DISPLAY=:99 timeout 25s /app/.venv/bin/python /work/main.py; "
+                    'status=$?; kill "$xp"; wait "$xp" 2>/dev/null || true; exit $status',
                 ],
-                "WorkingDir": "/app",      # keep the project dir (with .venv) as CWD
+                "WorkingDir": "/app",  # keep the project dir (with .venv) as CWD
                 "Env": [
                     "PYTHONUNBUFFERED=1",
                     "OUT=/work/kivy_screenshot.png",
                     "WIDTH=800",
-                    "HEIGHT=600"
+                    "HEIGHT=600",
                 ],
                 "HostConfig": {
                     "Binds": [f"{tmpdirname}:/work:rw"],
                     "AutoRemove": True,
                     "Memory": 512 * 1024 * 1024,
                     "CpuQuota": 50000,
-                    "NetworkMode": "none"
+                    "NetworkMode": "none",
                 },
-                        }
-            
+            }
+
             logging.info(f"🐳 Docker config: {container_config}")
             logging.info("🏃 Starting Docker container...")
-            
+
             # Run the container with timeout
             container = await dockerclient.containers.run(config=container_config)
             logging.info(f"✅ Container started: {container.id}")
-            
+
             # Collect output with timeout
             kivy_logs = []
             logging.info("📊 Collecting container logs...")
-            
+
             try:
                 # Add timeout to prevent hanging
                 async def collect_logs():
-                    async for line in container.log(follow=True, stderr=True, stdout=True):
+                    async for line in container.log(
+                        follow=True, stderr=True, stdout=True
+                    ):
                         log_line = line.rstrip()
                         kivy_logs.append(log_line)
                         logging.info(f"📄 Container log: {log_line}")
-                
+
                 # Wait for logs with 30-second timeout
                 await asyncio.wait_for(collect_logs(), timeout=30.0)
                 logging.info(f"📋 Collected {len(kivy_logs)} log lines")
-                
+
             except asyncio.TimeoutError:
                 logging.warning("⏰ Container execution timed out after 30 seconds")
                 # Force kill the container
@@ -460,40 +489,46 @@ async def render_kivy_snippet(interaction: discord.Interaction, code: str) -> Di
                     logging.info("🛑 Container killed due to timeout")
                 except Exception as kill_error:
                     logging.error(f"❌ Failed to kill container: {kill_error}")
-                
+
                 # Return timeout error with collected logs
-                logs_content = "\n".join(kivy_logs[-20:]) if kivy_logs else "No logs collected before timeout"
+                logs_content = (
+                    "\n".join(kivy_logs[-20:])
+                    if kivy_logs
+                    else "No logs collected before timeout"
+                )
                 await dockerclient.close()
                 return {
                     "content": "⏰ Rendering timed out after 30 seconds. The Kivy app might be hanging.",
                     "files": [
                         discord.File(
-                            fp=io.BytesIO(logs_content.encode('utf-8')),
-                            filename="timeout_logs.txt"
+                            fp=io.BytesIO(logs_content.encode("utf-8")),
+                            filename="timeout_logs.txt",
                         )
-                    ]
+                    ],
                 }
-            
+
             await dockerclient.close()
-            
+
             # Check if screenshot was generated
             screenshot_path = Path(tmpdirname) / "kivy_screenshot.png"
             logging.info(f"🔍 Checking for screenshot at: {screenshot_path}")
-            
+
             # Also check what files are actually in the temp directory
             temp_files = list(Path(tmpdirname).iterdir())
-            logging.info(f"📂 All files in temp dir: {[(f.name, f.stat().st_size if f.is_file() else 'dir') for f in temp_files]}")
-            
+            logging.info(
+                f"📂 All files in temp dir: {[(f.name, f.stat().st_size if f.is_file() else 'dir') for f in temp_files]}"
+            )
+
             if screenshot_path.exists():
                 file_size = screenshot_path.stat().st_size
                 logging.info(f"✅ Screenshot found! Size: {file_size} bytes")
                 return {
                     "content": "🎉 Here's your Kivy app screenshot!",
-                    "files": [discord.File(screenshot_path, filename="kivy_app.png")]
+                    "files": [discord.File(screenshot_path, filename="kivy_app.png")],
                 }
             else:
                 logging.warning("❌ No screenshot file found")
-                
+
                 # Return logs if no screenshot was generated
                 logs_content = "\n".join(kivy_logs[-50:])  # Last 50 lines
                 logging.info(f"📝 Returning logs ({len(logs_content)} chars)")
@@ -501,18 +536,15 @@ async def render_kivy_snippet(interaction: discord.Interaction, code: str) -> Di
                     "content": "❌ No screenshot generated. Here are the logs:",
                     "files": [
                         discord.File(
-                            fp=io.BytesIO(logs_content.encode('utf-8')),
-                            filename="kivy_logs.txt"
+                            fp=io.BytesIO(logs_content.encode("utf-8")),
+                            filename="kivy_logs.txt",
                         )
-                    ]
+                    ],
                 }
-                
+
         except Exception as e:
             logging.error(f"💥 Docker rendering error: {e}", exc_info=True)
-            return {
-                "content": f"❌ Rendering failed: {str(e)}",
-                "files": []
-            }
+            return {"content": f"❌ Rendering failed: {str(e)}", "files": []}
 
 
 def prepare_kivy_script(user_code: str) -> str:
@@ -522,7 +554,7 @@ def prepare_kivy_script(user_code: str) -> str:
     Draws an opaque background using the user's Window.clearcolor
 
     """
-    template = '''
+    template = """
 from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.app import App
@@ -590,12 +622,14 @@ Window.bind(on_flip=arm_once)
 print("🚀 Starting user code...")
 # User code starts here
 {user_code}
-'''
+"""
 
     return template.format(user_code=user_code)
 
 
-async def placeholder_render_call(interaction: discord.Interaction, code: str, run_dir: Path):
+async def placeholder_render_call(
+    interaction: discord.Interaction, code: str, run_dir: Path
+):
     """
     Main render function that orchestrates the Kivy rendering process.
     Uses pre-warmed containers for better performance
@@ -603,16 +637,20 @@ async def placeholder_render_call(interaction: discord.Interaction, code: str, r
     logging.info(f"🎬 Starting render call for user {interaction.user.name}")
     logging.info(f"📝 Code length: {len(code)} characters")
     logging.info(f"📁 Run directory: {run_dir}")
-    
+
     try:
         # Try pre-warmed container first, fallback to original method
         if container_pool and container_pool.initialized:
             result = await render_kivy_with_pool(interaction, code)
         else:
             result = await render_kivy_snippet(interaction, code)
-            
-        logging.info(f"✅ Render successful, sending result: {result.get('content', 'No content')[:50]}...")
-        await interaction.followup.send(**result, ephemeral=False)  # Make it visible to everyone
+
+        logging.info(
+            f"✅ Render successful, sending result: {result.get('content', 'No content')[:50]}..."
+        )
+        await interaction.followup.send(
+            **result, ephemeral=False
+        )  # Make it visible to everyone
     except Exception as e:
         logging.error(f"💥 Error in placeholder_render_call: {e}", exc_info=True)
         await interaction.followup.send(
@@ -640,19 +678,23 @@ class KivyPromptView(discord.ui.View):
     async def yes_render(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
-        logging.info(f"🎯 Render button clicked by {interaction.user.name} for message {self.source_message_id}")
-        
+        logging.info(
+            f"🎯 Render button clicked by {interaction.user.name} for message {self.source_message_id}"
+        )
+
         # Disable all buttons during processing
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(view=self)
-        
+
         data = PENDING_SNIPPETS.get(self.source_message_id)
         if not data:
-            logging.warning(f"❌ No snippet data found for message {self.source_message_id}")
+            logging.warning(
+                f"❌ No snippet data found for message {self.source_message_id}"
+            )
             await interaction.followup.send(
-                "I couldn't find the original snippet (maybe I restarted). Try again.", 
-                ephemeral=True
+                "I couldn't find the original snippet (maybe I restarted). Try again.",
+                ephemeral=True,
             )
             # Re-enable buttons
             for child in self.children:
@@ -662,7 +704,7 @@ class KivyPromptView(discord.ui.View):
 
         code = data["code"]
         logging.info(f"📝 Retrieved code snippet: {len(code)} chars")
-        
+
         # Validate code for security
         # if not validate_code(code):
         #     logging.warning("🚨 Code validation failed - contains dangerous operations")
@@ -679,7 +721,7 @@ class KivyPromptView(discord.ui.View):
         try:
             run_dir = ensure_clean_run_dir(self.source_message_id)
             await placeholder_render_call(interaction, code, run_dir)
-            
+
             # Change button label after successful render
             button.label = "Render again"
         except Exception as e:
@@ -695,12 +737,14 @@ class KivyPromptView(discord.ui.View):
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
         await interaction.response.send_message(
-            "⚙️ Settings are coming soon. This will allow you to configure Kivy rendering options.", 
-            ephemeral=True
+            "⚙️ Settings are coming soon. This will allow you to configure Kivy rendering options.",
+            ephemeral=True,
         )
 
     @discord.ui.button(label="Go away", style=discord.ButtonStyle.danger)
-    async def go_away(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def go_away(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         try:
             await interaction.response.defer()
             await interaction.delete_original_response()
@@ -719,28 +763,34 @@ async def on_ready():
     logging.info(f"🔧 Python version: {sys.version}")
     logging.info(f"📦 Discord.py version: {discord.__version__}")
     print(f"✅ Bot {bot.user} is online!")
-    
+
     # Initialize container pool
     global container_pool
     try:
         logging.info("🔥 Initializing pre-warmed container pool...")
         container_pool = SimpleContainerPool("kivy-renderer:prewarmed", 2)
         await container_pool.initialize()
-        
+
         if container_pool.initialized:
             queue_size = container_pool.available_containers.qsize()
-            logging.info(f"🚀 Pre-warmed container pool ready with {queue_size} containers!")
+            logging.info(
+                f"🚀 Pre-warmed container pool ready with {queue_size} containers!"
+            )
             print(f"🚀 Pre-warmed container pool ready with {queue_size} containers!")
         else:
-            logging.warning("⚠️ Container pool failed to initialize. Using fallback method.")
+            logging.warning(
+                "⚠️ Container pool failed to initialize. Using fallback method."
+            )
             print("⚠️ Container pool failed to initialize. Using fallback method.")
             container_pool = None
-            
+
     except Exception as e:
-        logging.warning(f"⚠️ Container pool initialization failed: {e}. Using fallback method.")
+        logging.warning(
+            f"⚠️ Container pool initialization failed: {e}. Using fallback method."
+        )
         print(f"⚠️ Container pool initialization failed: {e}. Using fallback method.")
         container_pool = None
-    
+
     # Start cleanup task
     cleanup_old_snippets.start()
 
@@ -750,20 +800,20 @@ async def cleanup_old_snippets():
     """Clean up old snippets from memory to prevent memory leaks"""
     if not PENDING_SNIPPETS:
         return
-    
+
     # Remove snippets older than 1 hour (Discord message IDs are snowflakes with timestamps)
     current_time = discord.utils.utcnow().timestamp()
     old_ids = []
-    
+
     for message_id in PENDING_SNIPPETS:
         # Extract timestamp from Discord snowflake
         message_timestamp = ((message_id >> 22) + 1420070400000) / 1000
         if current_time - message_timestamp > 3600:  # 1 hour
             old_ids.append(message_id)
-    
+
     for old_id in old_ids:
         PENDING_SNIPPETS.pop(old_id, None)
-    
+
     if old_ids:
         logging.info(f"Cleaned up {len(old_ids)} old snippets from memory")
 
@@ -782,15 +832,19 @@ async def on_message(message: discord.Message):
     try:
         # Looks for ```py / ```python blocks
         blocks = extract_codeblocks_py(message.content)
-        
+
         if blocks:
-            logging.info(f"🔍 Found {len(blocks)} code blocks in message from {message.author.name}")
-            
+            logging.info(
+                f"🔍 Found {len(blocks)} code blocks in message from {message.author.name}"
+            )
+
             # Selects the first block that looks like Kivy; if none, takes the first one
             selected = None
             for i, b in enumerate(blocks):
                 is_kivy = looks_like_kivy(b)
-                logging.info(f"📋 Block {i+1}: {len(b)} chars, looks_like_kivy={is_kivy}")
+                logging.info(
+                    f"📋 Block {i + 1}: {len(b)} chars, looks_like_kivy={is_kivy}"
+                )
                 if is_kivy:
                     selected = b
                     break
@@ -840,16 +894,16 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logging.info("🛑 Bot shutdown requested")
         print("🛑 Bot shutdown requested")
-        
+
         # Cleanup container pool if it exists
         if container_pool:
             logging.info("🧹 Cleaning up container pool...")
             asyncio.run(container_pool.cleanup())
-            
+
     except Exception as e:
         logging.error(f"Failed to start bot: {e}")
         print(f"❌ Failed to start bot: {e}")
-        
+
         # Cleanup on error too
         if container_pool:
             try:
