@@ -945,6 +945,40 @@ async def ping(ctx: commands.Context):
     await ctx.send("🏓 Pong!")
 
 
+@bot.command(name="stats")
+async def stats_cmd(ctx: commands.Context):
+    s = metrics.snapshot()
+    c = s["counters"]
+    d = s["render_duration_seconds"]
+    b = s["screenshot_bytes"]
+
+    def f6(x):
+        return f"{x:.6f}" if isinstance(x, (int, float)) else "null"
+
+    avg_dur = d["sum"] / d["count"] if d["count"] else 0.0
+    avg_bytes = b["sum"] / b["count"] if b["count"] else 0.0
+
+    text = (
+        "doctor-kivy metrics\n"
+        f"renders_attempted_total: {c.get('renders_attempted_total', 0)}\n"
+        f"renders_success_total:  {c.get('renders_success_total', 0)}\n"
+        f"renders_failure_total:  {c.get('renders_failure_total', 0)}\n"
+        f"render_duration_seconds.count: {d.get('count', 0)}\n"
+        f"render_duration_seconds.sum:   {f6(d.get('sum'))}\n"
+        f"render_duration_seconds.min:   {f6(d.get('min'))}\n"
+        f"render_duration_seconds.max:   {f6(d.get('max'))}\n"
+        f"render_duration_seconds.avg:   {f6(avg_dur)}\n"
+        f"screenshot_bytes.count: {int(b.get('count', 0))}\n"
+        f"screenshot_bytes.sum:   {int(b.get('sum', 0))}\n"
+        f"screenshot_bytes.min:   {('null' if b.get('min') is None else int(b['min']))}\n"
+        f"screenshot_bytes.max:   {('null' if b.get('max') is None else int(b['max']))}\n"
+        f"screenshot_bytes.avg:   {int(avg_bytes) if b.get('count', 0) else 0}\n"
+        f"last_update_ts: {s.get('last_update_ts')}"
+    )
+
+    await ctx.send(f"```\n{text}\n```")
+
+
 if __name__ == "__main__":
     try:
         _install_sigterm_cleanup()
