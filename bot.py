@@ -59,6 +59,7 @@ class SimpleContainerPool:
         existing = await self.docker_client.containers.list(
             all=True, filters={"label": ["app=doctor-kivy", "role=kivy-pool"]}
         )
+        logging.info(f"🧹 Killing {len(existing)} existing containers in pool...")
         for c in existing:
             try:
                 await c.kill()
