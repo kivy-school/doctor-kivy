@@ -3,6 +3,7 @@ import re
 import shutil
 import logging
 import asyncio
+import signal
 import tempfile
 import io
 import sys
@@ -33,6 +34,9 @@ PENDING_SNIPPETS: dict[int, dict] = {}
 RUNS_DIR = Path("./runs")
 RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
+# Container Pool Labels
+POOL_LABELS = {"app": "doctor-kivy", "role": "kivy-pool"}
+
 
 # Pre-warmed Container Pool Implementation
 class SimpleContainerPool:
@@ -44,6 +48,22 @@ class SimpleContainerPool:
         self.available_containers = asyncio.Queue()
         self.docker_client = None
         self.initialized = False
+
+    async def _kill_existing_pool(self):
+        # remove any leftover containers from previous runs
+        existing = await self.docker_client.containers.list(
+            all=True,
+            filters={"label": ["app=doctor-kivy", "role=kivy-pool"]}
+        )
+        for c in existing:
+            try:
+                await c.kill()
+            except Exception:
+                pass
+            try:
+                await c.delete(force=True)
+            except Exception:
+                pass
         
     async def initialize(self):
         """Initialize the container pool"""
@@ -86,6 +106,7 @@ class SimpleContainerPool:
                 "while true; do sleep 30; done"],
             "Env": ["DISPLAY=:99", "PYTHONUNBUFFERED=1"],
             "WorkingDir": "/app",
+            "Labels": POOL_LABELS,
             "HostConfig": {
                 "Memory": 512 * 1024 * 1024,
                 "CpuQuota": 50000,
@@ -125,10 +146,20 @@ class SimpleContainerPool:
                     await container.kill()
                 except Exception as e:
                     logging.error(f"Error cleaning up container: {e}")
+            await self._kill_existing_pool()
             await self.docker_client.close()
 
 # Global container pool
 container_pool: Optional[SimpleContainerPool] = None
+
+def _install_sigterm_cleanup():
+    def _handler(signum, frame):
+        try:
+            if container_pool:
+                asyncio.run(container_pool.cleanup())
+        finally:
+            os._exit(0)
+    signal.signal(signal.SIGTERM, _handler)
 
 
 class KivyRenderError(Exception):
@@ -801,6 +832,7 @@ async def ping(ctx: commands.Context):
 
 if __name__ == "__main__":
     try:
+        _install_sigterm_cleanup()
         bot.run(TOKEN)
     except KeyboardInterrupt:
         logging.info("🛑 Bot shutdown requested")
