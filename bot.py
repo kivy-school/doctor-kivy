@@ -686,10 +686,32 @@ async def placeholder_render_call(
 
 
 class KivyPromptView(discord.ui.View):
-    def __init__(self, source_message_id: int):
+    def __init__(self, source_message_id: int, author_id: int):
         super().__init__(timeout=180)
         self.source_message_id = source_message_id
+        self.author_id = author_id
         self.message = None  # Store reference to the message
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.data and interaction.data.get("custom_id") in {"go_away"}:
+            return True
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message(
+                "Only the original author can use these buttons.", ephemeral=True
+            )
+            return False
+        return True
+
+    def _can_delete(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id == self.author_id:
+            return True
+        if not interaction.guild:
+            return False
+        member = interaction.guild.get_member(interaction.user.id)
+        if not member:
+            return False
+        perms = interaction.channel.permissions_for(member)
+        return perms.manage_messages or perms.administrator
 
     async def on_timeout(self):
         """Called when the view times out"""
@@ -767,10 +789,18 @@ class KivyPromptView(discord.ui.View):
             ephemeral=True,
         )
 
-    @discord.ui.button(label="Go away", style=discord.ButtonStyle.danger)
+    @discord.ui.button(
+        label="Go away", style=discord.ButtonStyle.danger, custom_id="go_away"
+    )
     async def go_away(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
+        if not self._can_delete(interaction):
+            await interaction.response.send_message(
+                "Only the original author or moderators can remove this.",
+                ephemeral=True,
+            )
+            return
         try:
             await interaction.response.defer()
             await interaction.delete_original_response()
@@ -892,7 +922,9 @@ async def on_message(message: discord.Message):
             # Builds the message + view
             prefix = "This message looks like it contains a Kivy snippet, do you want me to render it?"
 
-            view = KivyPromptView(source_message_id=message.id)
+            view = KivyPromptView(
+                source_message_id=message.id, author_id=message.author.id
+            )
             reply_message = await message.reply(
                 prefix,
                 view=view,
