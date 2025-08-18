@@ -296,12 +296,20 @@ async def render_kivy_with_pool(
         with tempfile.TemporaryDirectory() as tmpdir:
             # Clean old screenshot from container before starting
             cleanup_exec = await container.exec(
-                cmd=["/bin/sh", "-c", "rm -rf /work && mkdir /work"],
+                cmd=[
+                    "/bin/sh",
+                    "-lc",
+                    "set -e; rm -rf /work; mkdir -p /work; sync; ls -ld /work",
+                ],
                 stdout=True,
                 stderr=True,
             )
-            async with cleanup_exec.start() as _:
-                pass  # Wait for cleanup to complete
+            async with cleanup_exec.start() as stream:
+                # Wait for cleanup to complete
+                while True:
+                    chunk = await stream.read_out()
+                    if chunk is None:
+                        break
 
             logging.info(
                 "🧹 Cleaned old screenshot (deleted /work directory) from container"
