@@ -296,12 +296,24 @@ async def render_kivy_with_pool(
         with tempfile.TemporaryDirectory() as tmpdir:
             # Clean old screenshot from container before starting
             cleanup_exec = await container.exec(
-                cmd=["/bin/sh", "-c", "rm -f /work/kivy_screenshot.png"],
+                cmd=["/bin/sh", "-c", "rm -rf /work/kivy_screenshot.png"],
                 stdout=True,
                 stderr=True,
             )
             async with cleanup_exec.start() as _:
                 pass  # Wait for cleanup to complete
+
+            # Verify the screenshot path is gone before proceeding
+            verify_exec = await container.exec(
+                cmd=["/bin/sh", "-c", "test ! -e /work/kivy_screenshot.png"],
+                stdout=True,
+                stderr=True,
+            )
+            async with verify_exec.start() as _:
+                pass  # Wait for verification to complete
+            verify_result = await verify_exec.inspect()
+            if verify_result.get("ExitCode", 1) != 0:
+                raise RuntimeError("Failed to clean old screenshot from container")
             logging.info("🧹 Cleaned old screenshot from container")
 
             # Prepare script
