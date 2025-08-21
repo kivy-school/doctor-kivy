@@ -768,7 +768,7 @@ async def placeholder_render_call(
         metrics.observe_duration(time.monotonic() - start)
 
         logging.info(
-            f"✅ Render successful, sending result: {result.get('content', 'No content')[:50]}..."
+            f"✅ Render {'successful' if success else 'failed'}, sending result: {result.get('content', 'No content')[:50]}..."
         )
         await interaction.followup.send(
             **result, ephemeral=False
