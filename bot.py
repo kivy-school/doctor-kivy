@@ -337,6 +337,23 @@ async def cleanup_orphan_processes(container):
         # Don't fail the whole operation if cleanup fails
 
 
+async def validate_screenshot_size(
+    file_size: int,
+    max_size: int = 50 * 1024 * 1024,
+) -> bool:
+    """Validate screenshot file size (default: 50MB max)"""
+    try:
+        if file_size > max_size:
+            logging.warning(
+                f"Screenshot too large: {file_size} bytes (max: {max_size})"
+            )
+            return False
+        return True
+    except Exception as e:
+        logging.error(f"Failed to validate screenshot size: {e}")
+        return False
+
+
 async def render_kivy_with_pool(
     interaction: discord.Interaction, code: str
 ) -> Dict[str, Any]:
@@ -448,6 +465,12 @@ async def render_kivy_with_pool(
 
                 if screenshot_file:
                     screenshot_data = screenshot_file.read()
+                    file_size = len(screenshot_data)
+                    if not await validate_screenshot_size(file_size):
+                        return {
+                            "content": "Screenshot file is too large and may be malicious. Rendering aborted.",
+                            "files": [],
+                        }
 
                     if len(screenshot_data) > 0:
                         discord_file = discord.File(
@@ -626,6 +649,12 @@ async def render_kivy_snippet(
 
             if screenshot_path.exists():
                 file_size = screenshot_path.stat().st_size
+                if not await validate_screenshot_size(file_size):
+                    return {
+                        "content": "Screenshot file is too large and may be malicious. Rendering aborted.",
+                        "files": [],
+                    }
+
                 metrics.observe_screenshot_bytes(file_size)
                 logging.info(f"✅ Screenshot found! Size: {file_size} bytes")
                 return {
