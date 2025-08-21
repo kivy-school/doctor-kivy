@@ -125,6 +125,25 @@ class SimpleContainerPool:
                 "CpuQuota": 50000,
                 "NetworkMode": "none",
                 "AutoRemove": True,
+                "StorageOpt": {
+                    "size": "100M"  # Limit container filesystem to 100MB
+                },
+                "Tmpfs": {
+                    "/tmp": "size=80m,noexec,nosuid,nodev",  # 80MB /tmp
+                    "/work": "size=80m,noexec,nosuid,nodev",  # 80MB /work
+                },
+                "Ulimits": [
+                    {
+                        "Name": "fsize",
+                        "Soft": 104857600,
+                        "Hard": 104857600,
+                    },  # 100MB file size limit
+                    {"Name": "nofile", "Soft": 100, "Hard": 100},  # Limit open files
+                ],
+                "ReadonlyRootfs": False,
+                "SecurityOpt": [
+                    "no-new-privileges:true"
+                ],  # Prevent privilege escalation
             },
         }
 
@@ -520,6 +539,25 @@ async def render_kivy_snippet(
                     "Memory": 512 * 1024 * 1024,
                     "CpuQuota": 50000,
                     "NetworkMode": "none",
+                    "StorageOpt": {
+                        "size": "100M"  # Limit container filesystem to 100MB
+                    },
+                    "Ulimits": [
+                        {
+                            "Name": "fsize",
+                            "Soft": 104857600,
+                            "Hard": 104857600,
+                        },  # 100MB file size limit
+                        {
+                            "Name": "nofile",
+                            "Soft": 100,
+                            "Hard": 100,
+                        },  # Limit open files
+                    ],
+                    "ReadonlyRootfs": False,
+                    "SecurityOpt": [
+                        "no-new-privileges:true"
+                    ],  # Prevent privilege escalation
                 },
             }
 
