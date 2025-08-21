@@ -272,6 +272,52 @@ def ensure_clean_run_dir(message_id: int) -> Path:
     return run_dir
 
 
+async def cleanup_orphan_processes(container):
+    """Clean up orphan processes in the container after successful rendering"""
+    try:
+        logging.info("🧹 Cleaning up orphan processes in container...")
+
+        cleanup_cmd = [
+            "/bin/sh",
+            "-c",
+            "for p in /proc/[0-9]*; do "
+            "pid=${p#/proc/}; "
+            '[ "$pid" -eq 1 ] && continue; '
+            '[ "$pid" -eq "$$" ] && continue; '
+            '[ ! -d "$p" ] && continue; '
+            "cmd=$(tr '\\0' ' ' < \"$p/cmdline\" 2>/dev/null | sed 's/[[:space:]]*$//'); "
+            '[ -z "$cmd" ] && cmd=$(cat "$p/comm" 2>/dev/null); '
+            '[ -z "$cmd" ] && continue; '
+            'if ! echo "$cmd" | grep -q -E "^(/bin/sh /entrypoint\\.sh.*Xvfb.*:99|Xvfb :99 -screen 0 800x600x24 -nolisten tcp.*|tail -f /dev/null|/bin/bash|sleep 30)$"; then '
+            'kill "$pid" 2>/dev/null; '
+            "fi; "
+            "done 2>/dev/null",
+        ]
+
+        exec_instance = await container.exec(cmd=cleanup_cmd, stdout=True, stderr=True)
+
+        # Execute and collect any output
+        async with exec_instance.start() as stream:
+            while True:
+                try:
+                    chunk = await stream.read_out()
+                    if chunk is None:
+                        break
+                    if chunk.data:
+                        log_line = chunk.data.decode("utf-8").strip()
+                        if log_line:
+                            logging.info(f"🧹 Cleanup: {log_line}")
+                except Exception as e:
+                    logging.debug(f"Cleanup stream read error: {e}")
+                    break
+
+        logging.info("✅ Orphan process cleanup completed")
+
+    except Exception as e:
+        logging.warning(f"⚠️ Failed to clean up orphan processes: {e}")
+        # Don't fail the whole operation if cleanup fails
+
+
 async def render_kivy_with_pool(
     interaction: discord.Interaction, code: str
 ) -> Dict[str, Any]:
@@ -393,6 +439,9 @@ async def render_kivy_with_pool(
                             f"✅ Pre-warmed container render successful! Screenshot: {len(screenshot_data)} bytes"
                         )
                         metrics.observe_screenshot_bytes(len(screenshot_data))
+
+                        await cleanup_orphan_processes(container)
+
                         return {
                             "content": "🎉 Here's your Kivy app screenshot!",
                             "files": [discord_file],
