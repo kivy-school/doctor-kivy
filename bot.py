@@ -23,7 +23,6 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
 discord.utils.setup_logging()
 
 intents = discord.Intents.default()
