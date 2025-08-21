@@ -126,7 +126,6 @@ class SimpleContainerPool:
                 "AutoRemove": True,
                 "Tmpfs": {
                     "/tmp": "size=80m,noexec,nosuid,nodev",  # 80MB /tmp
-                    "/work": "size=80m,nosuid,nodev",  # 80MB /work
                 },
                 "Ulimits": [
                     {
