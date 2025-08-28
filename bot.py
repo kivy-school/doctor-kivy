@@ -689,23 +689,19 @@ from kivy.app import stopTouchApp
 from kivy.graphics import Color, Rectangle
 import os
 
-def _sync_theme_bg():
-    try:
-        app = App.get_running_app()
-        if app and hasattr(app, "theme_cls"):
-            Window.clearcolor = app.theme_cls.backgroundColor
-    except Exception as e:
-        print("Theme background sync failed:", e)
-
-def _install_bg():
-    _sync_theme_bg()
-    r, g, b, _ = Window.clearcolor  # respect user's color
+def _install_bg(*args):
+    if "MDApp" not in globals():
+        r, g, b, _ = Window.clearcolor  # respect user's color
+    else:
+        r, g, b, _ = app.theme_cls.backgroundColor
     with Window.canvas.before:
         bg_color = Color(r, g, b, 1)      # force opaque alpha
         bg_rect = Rectangle(pos=(0, 0), size=Window.size)
     def _on_resize(*_):
         bg_rect.size = Window.size
     Window.bind(size=_on_resize)
+
+    Clock.schedule_once(take_screenshot_and_exit, 0)  # next frame to ensure it's rendered
 
 def take_screenshot_and_exit(_dt):
     try:
@@ -750,8 +746,7 @@ def take_screenshot_and_exit(_dt):
 
 def arm_once(*_):
     Window.unbind(on_flip=arm_once)
-    _install_bg()                                     # draw opaque background into the on-screen buffer
-    Clock.schedule_once(take_screenshot_and_exit, 0)  # next frame to ensure it's rendered
+    Clock.schedule_once(_install_bg, 0)               # draw opaque background into the on-screen buffer
 
 Window.bind(on_flip=arm_once)
 
