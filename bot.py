@@ -930,8 +930,10 @@ class KivyPromptView(discord.ui.View):
             f"🎯 Render button clicked by {interaction.user.name} for message {self.source_message_id}"
         )
 
-        # Delete the initial prompt message
-        await interaction.message.delete()
+        # Disable all buttons during processing
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(view=self)
 
         data = PENDING_SNIPPETS.get(self.source_message_id)
         if not data:
@@ -966,7 +968,17 @@ class KivyPromptView(discord.ui.View):
 
         try:
             run_dir = ensure_clean_run_dir(self.source_message_id)
-            await placeholder_render_call(interaction, code, run_dir)
+            result = await placeholder_render_call(interaction, code, run_dir)
+
+            # Once the render finished and a result was posted, delete the old prompt
+            await interaction.message.delete()
+
+            # Attach new buttons to the result message
+            view = KivyPromptView(
+                source_message_id=self.source_message_id,
+                author_id=self.author_id,
+            )
+            await interaction.followup.send(**result, view=view, ephemeral=False)
 
             # Change button label after successful render
             button.label = "Render again"
