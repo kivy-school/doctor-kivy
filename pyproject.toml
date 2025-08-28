@@ -9,6 +9,10 @@ dependencies = [
     "discord-py>=2.5.2",
     "docker>=7.1.0",
     "kivy-reloader>=0.7.1",
+    "kivymd",
     "pillow>=11.3.0",
     "python-dotenv>=1.1.1",
 ]
+
+[tool.uv.sources]
+kivymd = { url = "https://github.com/kivymd/KivyMD/archive/master.zip" }
