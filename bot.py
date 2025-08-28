@@ -693,7 +693,8 @@ def _install_bg(*args):
     if "MDApp" not in globals():
         r, g, b, _ = Window.clearcolor  # respect user's color
     else:
-        r, g, b, _ = app.theme_cls.backgroundColor
+        running_app = App.get_running_app()
+        r, g, b, _ = running_app.theme_cls.backgroundColor
     with Window.canvas.before:
         bg_color = Color(r, g, b, 1)      # force opaque alpha
         bg_rect = Rectangle(pos=(0, 0), size=Window.size)
