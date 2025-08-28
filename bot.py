@@ -981,19 +981,13 @@ class KivyPromptView(discord.ui.View):
             run_dir = ensure_clean_run_dir(self.source_message_id)
             result = await placeholder_render_call(interaction, code, run_dir)
 
-            # Success: remove the old prompt
-            await interaction.message.delete()
-
             # Send new result with fresh buttons
             view = KivyPromptView(
                 source_message_id=self.source_message_id,
                 author_id=self.author_id,
                 rendered=True,
             )
-            await interaction.followup.send(**result, view=view, ephemeral=False)
-
-            # Update label for next cycle
-            button.label = "Render again"
+            await interaction.edit_original_response(**result, view=view)
 
         except Exception as e:
             # Failure: keep original message visible
