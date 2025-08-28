@@ -689,7 +689,16 @@ from kivy.app import stopTouchApp
 from kivy.graphics import Color, Rectangle
 import os
 
+def _sync_theme_bg():
+    try:
+        app = App.get_running_app()
+        if app and hasattr(app, "theme_cls"):
+            Window.clearcolor = app.theme_cls.backgroundColor
+    except Exception as e:
+        print("Theme background sync failed:", e)
+
 def _install_bg():
+    _sync_theme_bg()
     r, g, b, _ = Window.clearcolor  # respect user's color
     with Window.canvas.before:
         bg_color = Color(r, g, b, 1)      # force opaque alpha
