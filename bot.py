@@ -937,38 +937,46 @@ class KivyPromptView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(view=self)
 
-        data = PENDING_SNIPPETS.get(self.source_message_id)
-        if not data:
-            logging.warning(
-                f"❌ No snippet data found for message {self.source_message_id}"
-            )
-            await interaction.followup.send(
-                "I couldn't find the original snippet (maybe I restarted). Try again.",
-                ephemeral=True,
-            )
-            # Re-enable buttons
-            for child in self.children:
-                child.disabled = False
-            await interaction.edit_original_response(view=self)
-            return
-
-        code = data["code"]
-        logging.info(f"📝 Retrieved code snippet: {len(code)} chars")
-
-        # Validate code for security
-        # if not validate_code(code):
-        #     logging.warning("🚨 Code validation failed - contains dangerous operations")
-        #     await interaction.followup.send(
-        #         "❌ This code contains potentially dangerous operations and cannot be rendered.",
-        #         ephemeral=True
-        #     )
-        #     # Re-enable buttons
-        #     for child in self.children:
-        #         child.disabled = False
-        #     await interaction.edit_original_response(view=self)
-        #     return
-
         try:
+            # Fetch the latest version of the message (in case it was edited)
+            msg = await interaction.channel.fetch_message(self.source_message_id)
+            blocks = extract_codeblocks_py(msg.content)
+
+            code = None
+            for b in blocks:
+                if looks_like_kivy(b):
+                    code = b
+                    break
+
+            if not code:
+                logging.warning("❌ No valid Kivy snippet found in the current message")
+                await interaction.followup.send(
+                    "❌ Couldn't find a valid Kivy snippet in the message. Did you edit it incorrectly?",
+                    ephemeral=True,
+                )
+                # Re-enable buttons
+                for child in self.children:
+                    child.disabled = False
+                await interaction.edit_original_response(view=self)
+                return
+
+            logging.info(
+                f"📝 Using latest code snippet from message {self.source_message_id}, length={len(code)}"
+            )
+
+            # Validate code for security
+            # if not validate_code(code):
+            #     logging.warning("🚨 Code validation failed - contains dangerous operations")
+            #     await interaction.followup.send(
+            #         "❌ This code contains potentially dangerous operations and cannot be rendered.",
+            #         ephemeral=True
+            #     )
+            #     # Re-enable buttons
+            #     for child in self.children:
+            #         child.disabled = False
+            #     await interaction.edit_original_response(view=self)
+            #     return
+
             run_dir = ensure_clean_run_dir(self.source_message_id)
             result = await placeholder_render_call(interaction, code, run_dir)
 
@@ -991,7 +999,11 @@ class KivyPromptView(discord.ui.View):
             await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
             for child in self.children:
                 child.disabled = False
-            await interaction.edit_original_response(view=self)
+            try:
+                await interaction.edit_original_response(view=self)
+            except discord.NotFound:
+                # If original message was already deleted
+                pass
 
     @discord.ui.button(label="Change settings", style=discord.ButtonStyle.secondary)
     async def change_settings(
