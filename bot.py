@@ -236,19 +236,19 @@ def looks_like_kivy(code: str) -> bool:
 
     lowered = code.lower()
     # Check for standard Kivy imports
-    if "from kivy.app" in lowered:
+    if "from kivy" in lowered:
         return True
     if "import kivy" in lowered:
         return True
 
     # Check for Kivy reloader imports
-    if "from kivy_reloader.app" in lowered:
+    if "from kivy_reloader" in lowered:
         return True
     if "import kivy_reloader" in lowered:
         return True
 
     # Check for KivyMD imports
-    if "from kivymd.app" in lowered:
+    if "from kivymd" in lowered:
         return True
     if "import kivymd" in lowered:
         return True
