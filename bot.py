@@ -885,6 +885,15 @@ class KivyPromptView(discord.ui.View):
         self.author_id = author_id
         self.message = None  # Store reference to the message
 
+        # adjust the label if this is a post-render view
+        if self.rendered:
+            for child in self.children:
+                if (
+                    isinstance(child, discord.ui.Button)
+                    and child.label == "Yes, render"
+                ):
+                    child.label = "Render again"
+
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.data and interaction.data.get("custom_id") in {"go_away"}:
             return True
@@ -970,6 +979,7 @@ class KivyPromptView(discord.ui.View):
             view = KivyPromptView(
                 source_message_id=self.source_message_id,
                 author_id=self.author_id,
+                rendered=True,
             )
             await interaction.followup.send(**result, view=view, ephemeral=False)
 
@@ -1141,6 +1151,28 @@ async def on_message(message: discord.Message):
     except Exception as e:
         logging.error(f"Error in on_message: {e}")
         # Don't let message processing errors crash the bot
+
+
+@bot.event
+async def on_message_edit(before: discord.Message, after: discord.Message):
+    if after.author == bot.user:
+        return
+
+    blocks = extract_codeblocks_py(after.content)
+    if blocks:
+        # same logic as in on_message to pick a Kivy block
+        selected = None
+        for b in blocks:
+            if looks_like_kivy(b):
+                selected = b
+                break
+        if selected:
+            logging.info(f"✏️ Updated snippet for message {after.id} after edit")
+            PENDING_SNIPPETS[after.id] = {
+                "author_id": after.author.id,
+                "channel_id": after.channel.id,
+                "code": selected,
+            }
 
 
 @bot.command()
