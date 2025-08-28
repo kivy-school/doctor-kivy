@@ -984,7 +984,7 @@ class KivyPromptView(discord.ui.View):
             button.label = "Render again"
         except Exception as e:
             await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
-        finally:
+
             # Re-enable buttons
             for child in self.children:
                 child.disabled = False
