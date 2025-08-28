@@ -10,7 +10,7 @@ import tarfile
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import aiodocker
 import discord
@@ -349,6 +349,58 @@ async def validate_screenshot_size(
         return False
 
 
+_WINDOW_SIZE_RE = re.compile(
+    r"Window\s*\.\s*size\s*=\s*(\([^\)]*\)|\[[^\]]*\])",
+    flags=re.IGNORECASE,
+)
+_CONFIG_WIDTH_RE = re.compile(
+    r"Config\s*\.\s*set\s*\(\s*['\"]graphics['\"]\s*,\s*['\"]width['\"]\s*,\s*['\"]?(\d+)['\"]?\s*\)",
+    flags=re.IGNORECASE,
+)
+_CONFIG_HEIGHT_RE = re.compile(
+    r"Config\s*\.\s*set\s*\(\s*['\"]graphics['\"]\s*,\s*['\"]height['\"]\s*,\s*['\"]?(\d+)['\"]?\s*\)",
+    flags=re.IGNORECASE,
+)
+
+
+def _extract_first_two_numbers(s: str) -> Optional[Tuple[int, int]]:
+    nums = re.findall(r"\d+(?:\.\d+)?", s)
+    if len(nums) >= 2:
+        try:
+            w = int(float(nums[0]))
+            h = int(float(nums[1]))
+            if w > 0 and h > 0:
+                return w, h
+        except Exception:
+            return None
+    return None
+
+
+def parse_requested_size(code: str) -> Tuple[Optional[int], Optional[int], str]:
+    """
+    Returns (width, height, source) where source in {'window','config','none'}.
+    Prefers Window.size if both are present.
+    """
+    m = _WINDOW_SIZE_RE.search(code)
+    if m:
+        inner = m.group(1)
+        pair = _extract_first_two_numbers(inner)
+        if pair:
+            return pair[0], pair[1], "window"
+
+    w = None
+    h = None
+    for mw in _CONFIG_WIDTH_RE.finditer(code):
+        w = int(mw.group(1))
+    for mh in _CONFIG_HEIGHT_RE.finditer(code):
+        h = int(mh.group(1))
+
+    if w or h:
+        return w, h, "config"
+
+    return None, None, "none"
+
+
 async def render_kivy_with_pool(
     interaction: discord.Interaction, code: str
 ) -> Dict[str, Any]:
@@ -509,11 +561,15 @@ async def render_kivy_with_pool(
 
 
 async def render_kivy_snippet(
-    interaction: discord.Interaction, code: str
+    interaction: discord.Interaction,
+    code: str,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Renders Kivy code in a Docker container and returns the result.
     Similar to Manim's render_animation_snippet but for Kivy apps.
+    Optional width/height override the Xvfb screen size.
     """
     logging.info("🚀 Starting Kivy snippet rendering")
     dockerclient = aiodocker.Docker()
@@ -531,6 +587,11 @@ async def render_kivy_snippet(
         logging.info(f"💾 Wrote script to: {script_path}")
 
         try:
+            # Compute desired screen size (defaults if not provided)
+            W = str(width if width and width > 0 else 800)
+            H = str(height if height and height > 0 else 600)
+            logging.info(f"🖥️ Xvfb size -> {W}x{H}")
+
             # Set up Docker container configuration
             container_config = {
                 "Image": "kivy-renderer:latest",
@@ -548,8 +609,8 @@ async def render_kivy_snippet(
                 "Env": [
                     "PYTHONUNBUFFERED=1",
                     "OUT=/work/kivy_screenshot.png",
-                    "WIDTH=800",
-                    "HEIGHT=600",
+                    f"WIDTH={W}",
+                    f"HEIGHT={H}",
                 ],
                 "HostConfig": {
                     "Binds": [f"{tmpdirname}:/work:rw"],
@@ -764,7 +825,8 @@ async def placeholder_render_call(
 ):
     """
     Main render function that orchestrates the Kivy rendering process.
-    Uses pre-warmed containers for better performance
+    Uses pre-warmed containers for better performance.
+    Forces cold run with custom Xvfb size if user code specifies Window.size or Config graphics size.
     """
     logging.info(f"🎬 Starting render call for user {interaction.user.name}")
     logging.info(f"📝 Code length: {len(code)} characters")
@@ -773,11 +835,22 @@ async def placeholder_render_call(
     start = time.monotonic()
     metrics.inc_attempted()
     try:
-        # Try pre-warmed container first, fallback to original method
-        if container_pool and container_pool.initialized:
-            result = await render_kivy_with_pool(interaction, code)
+        # Detect requested size from code
+        req_w, req_h, src = parse_requested_size(code)
+        force_cold = src != "none"
+        if force_cold:
+            logging.info(
+                f"📐 Detected explicit size from {src}: width={req_w}, height={req_h}"
+            )
+            result = await render_kivy_snippet(
+                interaction, code, width=req_w, height=req_h
+            )
         else:
-            result = await render_kivy_snippet(interaction, code)
+            # Try pre-warmed container first, fallback to original method
+            if container_pool and container_pool.initialized:
+                result = await render_kivy_with_pool(interaction, code)
+            else:
+                result = await render_kivy_snippet(interaction, code)
 
         success = bool(
             isinstance(result, dict)
