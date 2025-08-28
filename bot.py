@@ -879,11 +879,12 @@ async def placeholder_render_call(
 
 
 class KivyPromptView(discord.ui.View):
-    def __init__(self, source_message_id: int, author_id: int):
+    def __init__(self, source_message_id: int, author_id: int, rendered: bool = False):
         super().__init__(timeout=180)
         self.source_message_id = source_message_id
         self.author_id = author_id
         self.message = None  # Store reference to the message
+        self.rendered = rendered
 
         # adjust the label if this is a post-render view
         if self.rendered:
