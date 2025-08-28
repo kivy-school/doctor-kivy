@@ -867,22 +867,15 @@ async def placeholder_render_call(
         metrics.observe_duration(time.monotonic() - start)
 
         logging.info(
-            f"✅ Render {'successful' if success else 'failed'}, sending result: {result.get('content', 'No content')[:50]}..."
+            f"✅ Render {'successful' if success else 'failed'}, result: {result.get('content', 'No content')[:50]}..."
         )
-        view = KivyPromptView(
-            source_message_id=interaction.message.id,
-            author_id=interaction.user.id,
-        )
-        await interaction.followup.send(**result, view=view, ephemeral=False)
+        return result
 
     except Exception as e:
         metrics.inc_failure()
         metrics.observe_duration(time.monotonic() - start)
         logging.error(f"💥 Error in placeholder_render_call: {e}", exc_info=True)
-        await interaction.followup.send(
-            f"❌ Something went wrong: {str(e)}",
-            ephemeral=True,  # Keep error messages private
-        )
+        return {"content": f"❌ Something went wrong: {str(e)}", "files": []}
 
 
 class KivyPromptView(discord.ui.View):
@@ -930,7 +923,7 @@ class KivyPromptView(discord.ui.View):
             f"🎯 Render button clicked by {interaction.user.name} for message {self.source_message_id}"
         )
 
-        # Disable all buttons during processing
+        # Disable buttons during processing
         for child in self.children:
             child.disabled = True
         await interaction.response.edit_message(view=self)
@@ -970,22 +963,22 @@ class KivyPromptView(discord.ui.View):
             run_dir = ensure_clean_run_dir(self.source_message_id)
             result = await placeholder_render_call(interaction, code, run_dir)
 
-            # Once the render finished and a result was posted, delete the old prompt
+            # Success: remove the old prompt
             await interaction.message.delete()
 
-            # Attach new buttons to the result message
+            # Send new result with fresh buttons
             view = KivyPromptView(
                 source_message_id=self.source_message_id,
                 author_id=self.author_id,
             )
             await interaction.followup.send(**result, view=view, ephemeral=False)
 
-            # Change button label after successful render
+            # Update label for next cycle
             button.label = "Render again"
-        except Exception as e:
-            await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
 
-            # Re-enable buttons
+        except Exception as e:
+            # Failure: keep original message visible
+            await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
             for child in self.children:
                 child.disabled = False
             await interaction.edit_original_response(view=self)
