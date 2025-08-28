@@ -702,6 +702,8 @@ def _install_bg(*args):
         bg_rect.size = Window.size
     Window.bind(size=_on_resize)
 
+    Clock.schedule_once(take_screenshot_and_exit, 0)  # next frame to ensure it's rendered
+
 def take_screenshot_and_exit(_dt):
     try:
         target_path = '/work/kivy_screenshot.png'
@@ -745,8 +747,7 @@ def take_screenshot_and_exit(_dt):
 
 def arm_once(*_):
     Window.unbind(on_flip=arm_once)
-    _install_bg()                                     # draw opaque background into the on-screen buffer
-    Clock.schedule_once(take_screenshot_and_exit, 0)  # next frame to ensure it's rendered
+    Clock.schedule_once(_install_bg, 0)               # draw opaque background into the on-screen buffer
 
 Window.bind(on_flip=arm_once)
 
