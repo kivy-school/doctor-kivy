@@ -869,9 +869,12 @@ async def placeholder_render_call(
         logging.info(
             f"✅ Render {'successful' if success else 'failed'}, sending result: {result.get('content', 'No content')[:50]}..."
         )
-        await interaction.followup.send(
-            **result, ephemeral=False
-        )  # Make it visible to everyone
+        view = KivyPromptView(
+            source_message_id=interaction.message.id,
+            author_id=interaction.user.id,
+        )
+        await interaction.followup.send(**result, view=view, ephemeral=False)
+
     except Exception as e:
         metrics.inc_failure()
         metrics.observe_duration(time.monotonic() - start)
@@ -927,10 +930,8 @@ class KivyPromptView(discord.ui.View):
             f"🎯 Render button clicked by {interaction.user.name} for message {self.source_message_id}"
         )
 
-        # Disable all buttons during processing
-        for child in self.children:
-            child.disabled = True
-        await interaction.response.edit_message(view=self)
+        # Delete the initial prompt message
+        await interaction.message.delete()
 
         data = PENDING_SNIPPETS.get(self.source_message_id)
         if not data:
