@@ -498,7 +498,10 @@ async def render_kivy_with_pool(
 
             except asyncio.TimeoutError:
                 logging.warning("⏰ Pre-warmed container execution timed out")
-                return {"content": "⏰ Rendering timed out after 30 seconds."}
+                return {
+                    "content": "⏰ Rendering timed out after 30 seconds.",
+                    "attachments": [],
+                }
 
             # Get screenshot from container
             try:
@@ -516,7 +519,7 @@ async def render_kivy_with_pool(
                     if not await validate_screenshot_size(file_size):
                         return {
                             "content": "Screenshot file is too large and may be malicious. Rendering aborted.",
-                            "files": [],
+                            "attachments": [],
                         }
 
                     if len(screenshot_data) > 0:
@@ -533,7 +536,7 @@ async def render_kivy_with_pool(
 
                         return {
                             "content": "🎉 Here's your Kivy app screenshot!",
-                            "files": [discord_file],
+                            "attachments": [discord_file],
                         }
 
             except Exception as e:
@@ -543,7 +546,7 @@ async def render_kivy_with_pool(
             logs_content = "\n".join(logs[-50:]) if logs else "No logs collected"
             return {
                 "content": "❌ Failed to generate screenshot (pre-warmed):",
-                "files": [
+                "attachments": [
                     discord.File(
                         fp=io.BytesIO(logs_content.encode("utf-8")),
                         filename="prewarmed_logs.txt",
@@ -680,7 +683,7 @@ async def render_kivy_snippet(
                 await dockerclient.close()
                 return {
                     "content": "⏰ Rendering timed out after 30 seconds. The Kivy app might be hanging.",
-                    "files": [
+                    "attachments": [
                         discord.File(
                             fp=io.BytesIO(logs_content.encode("utf-8")),
                             filename="timeout_logs.txt",
@@ -705,14 +708,16 @@ async def render_kivy_snippet(
                 if not await validate_screenshot_size(file_size):
                     return {
                         "content": "Screenshot file is too large and may be malicious. Rendering aborted.",
-                        "files": [],
+                        "attachments": [],
                     }
 
                 metrics.observe_screenshot_bytes(file_size)
                 logging.info(f"✅ Screenshot found! Size: {file_size} bytes")
                 return {
                     "content": "🎉 Here's your Kivy app screenshot!",
-                    "files": [discord.File(screenshot_path, filename="kivy_app.png")],
+                    "attachments": [
+                        discord.File(screenshot_path, filename="kivy_app.png")
+                    ],
                 }
             else:
                 logging.warning("❌ No screenshot file found")
@@ -722,7 +727,7 @@ async def render_kivy_snippet(
                 logging.info(f"📝 Returning logs ({len(logs_content)} chars)")
                 return {
                     "content": "❌ No screenshot generated. Here are the logs:",
-                    "files": [
+                    "attachments": [
                         discord.File(
                             fp=io.BytesIO(logs_content.encode("utf-8")),
                             filename="kivy_logs.txt",
@@ -732,7 +737,7 @@ async def render_kivy_snippet(
 
         except Exception as e:
             logging.error(f"💥 Docker rendering error: {e}", exc_info=True)
-            return {"content": f"❌ Rendering failed: {str(e)}", "files": []}
+            return {"content": f"❌ Rendering failed: {str(e)}", "attachments": []}
 
 
 def prepare_kivy_script(user_code: str) -> str:
@@ -854,9 +859,10 @@ async def placeholder_render_call(
 
         success = bool(
             isinstance(result, dict)
-            and result.get("files")
+            and result.get("attachments")
             and any(
-                getattr(f, "filename", "").endswith(".png") for f in result["files"]
+                getattr(f, "filename", "").endswith(".png")
+                for f in result["attachments"]
             )
         )
         if success:
@@ -875,7 +881,7 @@ async def placeholder_render_call(
         metrics.inc_failure()
         metrics.observe_duration(time.monotonic() - start)
         logging.error(f"💥 Error in placeholder_render_call: {e}", exc_info=True)
-        return {"content": f"❌ Something went wrong: {str(e)}", "files": []}
+        return {"content": f"❌ Something went wrong: {str(e)}", "attachments": []}
 
 
 class KivyPromptView(discord.ui.View):
