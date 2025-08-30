@@ -8,7 +8,7 @@ from kivy.core.window import Window
 from templates.base import _install_bg
 
 
-def take_screenshot_and_exit(_dt):
+def take_screenshot_and_exit():
     try:
         target_path = "/work/kivy_screenshot.png"
         print("Attempting to save screenshot to:", target_path)
