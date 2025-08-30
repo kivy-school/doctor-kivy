@@ -255,7 +255,9 @@ def create_video_from_images():
     os.system(
         f"ffmpeg -y -start_number 1 -framerate {real_fps:.6f} "
         f'-i "{os.path.join(CAP_DIR, "kivy_screenshot_%d.png")}" '
-        f"-c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -r 60 kivy_video.mp4"
+        f"-vf fps=60 -vsync vfr "
+        f"-c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -movflags +faststart "
+        f"kivy_video.mp4"
     )
     running_app = App.get_running_app()
     if running_app is not None:
@@ -270,6 +272,9 @@ def clear_images_folder():
     for f in os.listdir(CAP_DIR):
         if f.endswith(".png"):
             os.remove(os.path.join(CAP_DIR, f))
+
+
+_frame_times = []
 
 
 def export_to_png(dt):
