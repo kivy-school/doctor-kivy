@@ -1,4 +1,5 @@
 import os
+import time
 
 import asynckivy as ak
 from kivy.app import App, stopTouchApp
@@ -18,6 +19,12 @@ widget_durations = {
     "ScrollView": 1.5,  # Could be up to 3.0s if both x and y scroll
     "Video": 3.0,
 }
+
+
+CAP_DIR = os.path.join(os.getcwd(), "capture_frames")
+_frame_idx = 0
+_t0 = None
+_t1 = None
 
 
 def discover_elements(widget=None):
@@ -196,6 +203,9 @@ async def record_kivy_demo_video(*_):
     3. Triggers all interactions while recording
     4. Saves the final video
     """
+    global _t0, _t1, _frame_idx
+    _frame_idx = 0
+
     # draw opaque background into the on-screen buffer
     _install_bg()
 
@@ -209,6 +219,12 @@ async def record_kivy_demo_video(*_):
     # Clear images
     clear_images_folder()
 
+    # Warm up one export to load PIL plugins off-path
+    App.get_running_app().root.export_to_png(os.path.join(CAP_DIR, "_warmup.png"))
+    os.remove(os.path.join(CAP_DIR, "_warmup.png"))
+
+    _t0 = time.monotonic()
+
     # Start video recording here
     # TODO verify if 1/60 is the right interval
     Clock.schedule_interval(export_to_png, 1 / 60)
@@ -218,15 +234,28 @@ async def record_kivy_demo_video(*_):
 
     # TODO: Stop recording and save video
     Clock.unschedule(export_to_png)
+    _t1 = time.monotonic()
+
     create_video_from_images()
 
 
 def create_video_from_images():
     print("Creating video")
 
-    work_dir = os.getcwd()
+    global _t0, _t1, _frame_idx
+
+    # avoid div-by-zero
+    elapsed = max((_t1 - _t0) if (_t0 and _t1) else 0.0, 1e-6)
+    real_fps = max(_frame_idx / elapsed, 0.000001)
+    print(
+        f"Creating video from {_frame_idx} frames over {elapsed:.3f}s → {real_fps:.6f} fps"
+    )
+
+    # Input timestamps = measured fps; output resampled to 60 fps for playback
     os.system(
-        f'ffmpeg -y -framerate 60 -i "{os.path.join(work_dir, "kivy_screenshot_%d.png")}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p kivy_video.mp4'
+        f"ffmpeg -y -start_number 1 -framerate {real_fps:.6f} "
+        f'-i "{os.path.join(CAP_DIR, "kivy_screenshot_%d.png")}" '
+        f"-c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -r 60 kivy_video.mp4"
     )
     running_app = App.get_running_app()
     if running_app is not None:
@@ -237,17 +266,18 @@ def create_video_from_images():
 
 
 def clear_images_folder():
-    for file in os.listdir(os.getcwd()):
-        if file.endswith(".png"):
-            print(f"Removing {file}")
-            os.remove(os.path.join(os.getcwd(), file))
+    os.makedirs(CAP_DIR, exist_ok=True)
+    for f in os.listdir(CAP_DIR):
+        if f.endswith(".png"):
+            os.remove(os.path.join(CAP_DIR, f))
 
 
-def export_to_png(self, *args):
-    image_number = len(os.listdir(os.getcwd())) + 1
+def export_to_png(dt):
+    # dt is supplied by Kivy's Clock; do not scan the filesystem
+    global _frame_idx
+    _frame_idx += 1
     root = App.get_running_app().root
-    output_path = os.path.join(os.getcwd(), f"kivy_screenshot_{image_number}.png")
-    root.export_to_png(output_path)
+    root.export_to_png(os.path.join(CAP_DIR, f"kivy_screenshot_{_frame_idx}.png"))
 
 
 def arm_video_recording(*_):
