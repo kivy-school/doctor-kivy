@@ -255,7 +255,6 @@ def create_video_from_images():
     os.system(
         f"ffmpeg -y -start_number 1 -framerate {real_fps:.6f} "
         f'-i "{os.path.join(CAP_DIR, "kivy_screenshot_%d.png")}" '
-        f"-vf fps=60 -vsync vfr "
         f"-c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p -movflags +faststart "
         f"kivy_video.mp4"
     )
