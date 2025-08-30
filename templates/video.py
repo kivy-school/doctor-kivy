@@ -223,7 +223,8 @@ async def record_kivy_demo_video(*_):
 
 def create_video_from_images():
     print("Creating video")
-    work_dir = os.path.join(os.getcwd(), "work")
+
+    work_dir = os.getcwd()
     os.system(
         f'ffmpeg -y -framerate 60 -i "{os.path.join(work_dir, "kivy_screenshot_%d.png")}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p kivy_video.mp4'
     )
@@ -236,18 +237,16 @@ def create_video_from_images():
 
 
 def clear_images_folder():
-    for file in os.listdir(os.path.join(os.getcwd(), "work")):
+    for file in os.listdir(os.getcwd()):
         if file.endswith(".png"):
             print(f"Removing {file}")
-            os.remove(os.path.join(os.getcwd(), "work", file))
+            os.remove(os.path.join(os.getcwd(), file))
 
 
 def export_to_png(self, *args):
-    image_number = len(os.listdir(os.path.join(os.getcwd(), "work"))) + 1
+    image_number = len(os.listdir(os.getcwd())) + 1
     root = App.get_running_app().root
-    output_path = os.path.join(
-        os.getcwd(), "work", f"kivy_screenshot_{image_number}.png"
-    )
+    output_path = os.path.join(os.getcwd(), f"kivy_screenshot_{image_number}.png")
     root.export_to_png(output_path)
 
 
