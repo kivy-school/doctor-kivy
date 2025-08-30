@@ -554,7 +554,7 @@ async def render_kivy_with_pool(
             exec_config = [
                 "/bin/sh",
                 "-c",
-                "cd /work && timeout 25s /root/.local/bin/uv run python main.py",
+                "cd /work && timeout 50s /root/.local/bin/uv run python main.py",
             ]
 
             exec_instance = await container.exec(
@@ -583,12 +583,12 @@ async def render_kivy_with_pool(
                                 logging.debug(f"Stream read error: {e}")
                                 break
 
-                await asyncio.wait_for(collect_logs(), timeout=30.0)
+                await asyncio.wait_for(collect_logs(), timeout=50.0)
 
             except asyncio.TimeoutError:
                 logging.warning("⏰ Pre-warmed container execution timed out")
                 return {
-                    "content": f"⏰ {mode.value.title()} rendering timed out after 30 seconds.",
+                    "content": f"⏰ {mode.value.title()} rendering timed out after 50 seconds.",
                     "attachments": [],
                 }
 
@@ -703,7 +703,7 @@ async def render_kivy_snippet(
                     "set -e; "
                     "Xvfb :99 -screen 0 ${WIDTH:-800}x${HEIGHT:-600}x24 -nolisten tcp & xp=$!; "
                     "for i in $(seq 1 50); do DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && break; sleep 0.1; done; "
-                    "DISPLAY=:99 timeout 25s /app/.venv/bin/python /work/main.py; "
+                    "DISPLAY=:99 timeout 50s /app/.venv/bin/python /work/main.py; "
                     'status=$?; kill "$xp"; wait "$xp" 2>/dev/null || true; exit $status',
                 ],
                 "WorkingDir": "/app",  # keep the project dir (with .venv) as CWD
@@ -759,12 +759,12 @@ async def render_kivy_snippet(
                         kivy_logs.append(log_line)
                         logging.info(f"📄 Container log: {log_line}")
 
-                # Wait for logs with 30-second timeout
-                await asyncio.wait_for(collect_logs(), timeout=30.0)
+                # Wait for logs with 50-second timeout
+                await asyncio.wait_for(collect_logs(), timeout=50.0)
                 logging.info(f"📋 Collected {len(kivy_logs)} log lines")
 
             except asyncio.TimeoutError:
-                logging.warning("⏰ Container execution timed out after 30 seconds")
+                logging.warning("⏰ Container execution timed out after 50 seconds")
                 # Force kill the container
                 try:
                     await container.kill()
