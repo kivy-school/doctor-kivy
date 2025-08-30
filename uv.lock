@@ -392,6 +392,7 @@ dependencies = [
     { name = "asynckivy" },
     { name = "discord-py" },
     { name = "docker" },
+    { name = "ffpyplayer" },
     { name = "kivy-reloader" },
     { name = "kivymd" },
     { name = "pillow" },
@@ -404,6 +405,7 @@ requires-dist = [
     { name = "asynckivy", specifier = ">=0.9.0" },
     { name = "discord-py", specifier = ">=2.5.2" },
     { name = "docker", specifier = ">=7.1.0" },
+    { name = "ffpyplayer", specifier = ">=4.5.3" },
     { name = "kivy-reloader", specifier = ">=0.7.1" },
     { name = "kivymd", url = "https://github.com/FilipeMarch/KivyMD/archive/master.zip" },
     { name = "pillow", specifier = ">=11.3.0" },
@@ -417,6 +419,32 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e9/86/5b41c32ecedcfdb4c77b28b6cb14234f252075f8cdb254531727a35547dd/docutils-0.22.tar.gz", hash = "sha256:ba9d57750e92331ebe7c08a1bbf7a7f8143b86c476acd51528b042216a6aad0f", size = 2277984 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/44/57/8db39bc5f98f042e0153b1de9fb88e1a409a33cda4dd7f723c2ed71e01f6/docutils-0.22-py3-none-any.whl", hash = "sha256:4ed966a0e96a0477d852f7af31bdcb3adc049fbb35ccba358c2ea8a03287615e", size = 630709 },
+]
+
+[[package]]
+name = "ffpyplayer"
+version = "4.5.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/04/bbb7a314c526d1aa055057c243de36ebce8d2828dabe1f2b96a9e3c53157/ffpyplayer-4.5.3.tar.gz", hash = "sha256:8b9623e04997ba7bbf5476313aa8d9eae2665c65f403b5deff4ac51f16155e7e", size = 89089 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/54/8a77e5868569915e059adad6f4f80d77532eacf31c0522bebe05552c5a71/ffpyplayer-4.5.3-cp311-cp311-macosx_10_13_universal2.whl", hash = "sha256:7c9799e86a4c197c647e3ece6a8a1d026b2deb21e0a5b5bffbf49eac2a876168", size = 38312017 },
+    { url = "https://files.pythonhosted.org/packages/df/32/03d63ed11d9d6bec683a85ddf1a8b3b17f25d3a1b71e31d9975ea6af294a/ffpyplayer-4.5.3-cp311-cp311-macosx_10_13_x86_64.whl", hash = "sha256:a5728d1b3e4a2e449893b766eab4e35fcccb1e6e53a2c3321bf745f1a86c27cf", size = 20324390 },
+    { url = "https://files.pythonhosted.org/packages/f3/e9/9d4bdf1516d6593dfd447efced34030e5f5e51770fee1aef3b0d1c969bef/ffpyplayer-4.5.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:b592ee9f6c71ba8d768ebc032ce30e3aaeff3be3c4cba2fcf7fed4a36071f169", size = 18071175 },
+    { url = "https://files.pythonhosted.org/packages/e8/12/00b1d9c3801dc7ff450f08202b2e9e46fae2f512331c9a5eb67a0598555a/ffpyplayer-4.5.3-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c2d4f6c779ae5038e321e84e1da7570f9ea9ae3d7993054c60ad1338c2d5da38", size = 28089350 },
+    { url = "https://files.pythonhosted.org/packages/1b/9a/4fe815abda74043465575cc52242db4f8a2d88a59123ed04de8f8fb7a6b7/ffpyplayer-4.5.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:29490c57b86c5e48ed0d12c974ca83ee4dd7d2cc360f400115e64e8afb4436ef", size = 29946500 },
+    { url = "https://files.pythonhosted.org/packages/54/46/a1c88f27fb03a8fa9f36ff9d0a98259028c9e8261a77b6b65d7a1a5bcf0b/ffpyplayer-4.5.3-cp311-cp311-win_amd64.whl", hash = "sha256:3e613fe88c2fd1f3f7c9f84b3e153c90b1222f7e4dbf92a280d449c6217256bf", size = 61016791 },
+    { url = "https://files.pythonhosted.org/packages/30/c1/d8619d7056b6e1b093727f8549339603acc271a127a7fdd374b649ffcb0e/ffpyplayer-4.5.3-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:666bfed646b52014895f30c8d9d10b416a616911ae496a643f9980b45cc24b74", size = 38322177 },
+    { url = "https://files.pythonhosted.org/packages/8a/19/e080682db8bd706e87bf516dc96452d9af78cc024dfcf52e7f52eea92250/ffpyplayer-4.5.3-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:bb4bd6d9d1ee37cfe8f470aa9b49dc79f1b4761c2c5b44e4784740c8efb8cc22", size = 20330483 },
+    { url = "https://files.pythonhosted.org/packages/3e/b6/1608abf09e0c0b3c9a68c7a2b64655beb8e4620a084527fa6fa60e61bee2/ffpyplayer-4.5.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:5c79aa4c82b414689377b1e0111c61b12c8b2b3b0ed961670ec5f1fbd873b967", size = 18075307 },
+    { url = "https://files.pythonhosted.org/packages/3d/ac/ef562054a5a5120d8a1cca38f652b55062154bb9c20e57a8e5d9f50b1641/ffpyplayer-4.5.3-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2545160450f8dacb1de0f37b2438a61a301610a1f50c1878edf87d19ed9782a1", size = 28108609 },
+    { url = "https://files.pythonhosted.org/packages/46/6e/af8d576777dae551fbf7061fc300a8bbc462d7c36a7c3e01938cd77f0867/ffpyplayer-4.5.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b92f2b399b25404b688093b605109ef647a7b4314d6bbb24a81c738646e77b87", size = 29980291 },
+    { url = "https://files.pythonhosted.org/packages/bf/f8/73ceb1830f1ba37ab44167214717947db0a2ca1678a1ba31906e3ad7869c/ffpyplayer-4.5.3-cp312-cp312-win_amd64.whl", hash = "sha256:7eefb1060e2df8534eec245e1f7e228b4b53853a0b4f508a124b4b83c6f2c56c", size = 61014946 },
+    { url = "https://files.pythonhosted.org/packages/1f/70/1f3d79162dffd0832d092756fb5bf36f6e91ea11a8c5f9c58d4ab0b11daf/ffpyplayer-4.5.3-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:441888f42b76dbd7c3005f44d7145f713a1d8ce23351bbc480b9fa05e4662afb", size = 38304193 },
+    { url = "https://files.pythonhosted.org/packages/ad/ad/42ef5792179d57b8a70e0129bdb41a741ed0865bf0ddb134c34dfe89b630/ffpyplayer-4.5.3-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:549151bb125c9f2a6d7ebddf62290459a1624cf1a9562e78ff07ead537fdbbae", size = 20321309 },
+    { url = "https://files.pythonhosted.org/packages/39/58/aa5a1e54e371d70f05c84d4f25a7fd19efd791a9b71d18fafee48756a67d/ffpyplayer-4.5.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:50917a4b25fd648ed76991d1703cd5940bcce9b3b0e824108483b2f4fce244f9", size = 18066417 },
+    { url = "https://files.pythonhosted.org/packages/bf/62/8bd52cce95d8844208003c8141cf945861249fef6349e2576dc00378013f/ffpyplayer-4.5.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3e012cc1c943570009fad024a675bdf43b31e8e1d0c0709715e611bdf5ab3959", size = 28053629 },
+    { url = "https://files.pythonhosted.org/packages/e2/ab/2fc7817e12e0498a17b3fd86710ff32252df73e32cce8cbb5c4780063875/ffpyplayer-4.5.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:586b04cd59b1bc3a759d9772de281172480e166778693474249ae1e1254a427f", size = 29933608 },
+    { url = "https://files.pythonhosted.org/packages/98/c3/6ee450f9a27be85be648f46b38997b3942f513e14c0959cd203ab11bacf0/ffpyplayer-4.5.3-cp313-cp313-win_amd64.whl", hash = "sha256:2dc1dc9dc6fddc7812c8451e14544aa01ecdaaee8c2ca705187925c3ff75d12d", size = 61009190 },
 ]
 
 [[package]]
