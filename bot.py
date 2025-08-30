@@ -419,20 +419,20 @@ async def cleanup_orphan_processes(container):
         # Don't fail the whole operation if cleanup fails
 
 
-async def validate_screenshot_size(
+async def validate_file_size(
     file_size: int,
     max_size: int = 50 * 1024 * 1024,
 ) -> bool:
-    """Validate screenshot file size (default: 50MB max)"""
+    """Validate output file size (default: 50MB max)"""
     try:
         if file_size > max_size:
             logging.warning(
-                f"Screenshot too large: {file_size} bytes (max: {max_size})"
+                f"Output file too large: {file_size} bytes (max: {max_size})"
             )
             return False
         return True
     except Exception as e:
-        logging.error(f"Failed to validate screenshot size: {e}")
+        logging.error(f"Failed to validate file size: {e}")
         return False
 
 
@@ -489,7 +489,9 @@ def parse_requested_size(code: str) -> Tuple[Optional[int], Optional[int], str]:
 
 
 async def render_kivy_with_pool(
-    interaction: discord.Interaction, code: str
+    interaction: discord.Interaction,
+    code: str,
+    mode: KivyRenderMode = KivyRenderMode.SCREENSHOT,
 ) -> Dict[str, Any]:
     """Optimized render function using pre-warmed container pool"""
     if not container_pool or not container_pool.initialized:
@@ -497,16 +499,16 @@ async def render_kivy_with_pool(
         logging.warning(
             "⚠️ Container pool not available, falling back to original method"
         )
-        return await render_kivy_snippet(interaction, code)
+        return await render_kivy_snippet(interaction, code, mode=mode)
 
-    logging.info("🚀 Using pre-warmed container from pool")
+    logging.info(f"🚀 Using pre-warmed container from pool for {mode.value}")
     container = await container_pool.get_container()
 
     if not container:
         logging.warning(
             "⚠️ No containers available in pool, falling back to original method"
         )
-        return await render_kivy_snippet(interaction, code)
+        return await render_kivy_snippet(interaction, code, mode=mode)
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -533,7 +535,7 @@ async def render_kivy_with_pool(
 
             # Prepare script
             script_path = Path(tmpdir) / "main.py"
-            kivy_script = prepare_kivy_script(code)
+            kivy_script = prepare_kivy_script(code, mode)
             script_path.write_text(kivy_script, encoding="utf-8")
 
             logging.info(f"📝 Prepared script in {tmpdir}")
@@ -586,53 +588,61 @@ async def render_kivy_with_pool(
             except asyncio.TimeoutError:
                 logging.warning("⏰ Pre-warmed container execution timed out")
                 return {
-                    "content": "⏰ Rendering timed out after 30 seconds.",
+                    "content": f"⏰ {mode.value.title()} rendering timed out after 30 seconds.",
                     "attachments": [],
                 }
 
-            # Get screenshot from container
+            # Get output from container based on mode
             try:
-                screenshot_tar = await container.get_archive(
-                    "/work/kivy_screenshot.png"
-                )
+                if mode == KivyRenderMode.SCREENSHOT:
+                    output_file = "/work/kivy_screenshot.png"
+                    expected_filename = "kivy_screenshot.png"
+                    success_message = "🎉 Here's your Kivy app screenshot!"
+                else:  # VIDEO mode
+                    output_file = "/work/kivy_video.mp4"
+                    expected_filename = "kivy_video.mp4"
+                    success_message = "🎉 Here's your Kivy app video!"
+
+                output_tar = await container.get_archive(output_file)
 
                 # aiodocker returns TarFile directly, not async iterator
-                screenshot_member = screenshot_tar.getmember("kivy_screenshot.png")
-                screenshot_file = screenshot_tar.extractfile(screenshot_member)
+                output_member = output_tar.getmember(output_file.split("/")[-1])
+                extracted_file = output_tar.extractfile(output_member)
 
-                if screenshot_file:
-                    screenshot_data = screenshot_file.read()
-                    file_size = len(screenshot_data)
-                    if not await validate_screenshot_size(file_size):
+                if extracted_file:
+                    file_data = extracted_file.read()
+                    file_size = len(file_data)
+                    if not await validate_file_size(file_size):
                         return {
-                            "content": "Screenshot file is too large and may be malicious. Rendering aborted.",
+                            "content": f"{mode.value.title()} file is too large and may be malicious. Rendering aborted.",
                             "attachments": [],
                         }
 
-                    if len(screenshot_data) > 0:
+                    if len(file_data) > 0:
                         discord_file = discord.File(
-                            io.BytesIO(screenshot_data), filename="kivy_screenshot.png"
+                            io.BytesIO(file_data), filename=expected_filename
                         )
 
                         logging.info(
-                            f"✅ Pre-warmed container render successful! Screenshot: {len(screenshot_data)} bytes"
+                            f"✅ Pre-warmed container {mode.value} render successful! File: {len(file_data)} bytes"
                         )
-                        metrics.observe_screenshot_bytes(len(screenshot_data))
+                        if mode == KivyRenderMode.SCREENSHOT:
+                            metrics.observe_screenshot_bytes(len(file_data))
 
                         await cleanup_orphan_processes(container)
 
                         return {
-                            "content": "🎉 Here's your Kivy app screenshot!",
+                            "content": success_message,
                             "attachments": [discord_file],
                         }
 
             except Exception as e:
-                logging.warning(f"Screenshot extraction failed: {e}")
+                logging.warning(f"{mode.value.title()} extraction failed: {e}")
 
-            # Return logs if screenshot failed
+            # Return logs if output failed
             logs_content = "\n".join(logs[-50:]) if logs else "No logs collected"
             return {
-                "content": "❌ Failed to generate screenshot (pre-warmed):",
+                "content": f"❌ Failed to generate {mode.value} (pre-warmed):",
                 "attachments": [
                     discord.File(
                         fp=io.BytesIO(logs_content.encode("utf-8")),
@@ -645,7 +655,7 @@ async def render_kivy_with_pool(
         logging.error(f"💥 Pre-warmed container failed: {e}")
         # Fallback to original method
         logging.info("🔄 Falling back to original rendering method")
-        return await render_kivy_snippet(interaction, code)
+        return await render_kivy_snippet(interaction, code, mode=mode)
     finally:
         await container_pool.return_container(container)
 
@@ -655,17 +665,18 @@ async def render_kivy_snippet(
     code: str,
     width: Optional[int] = None,
     height: Optional[int] = None,
+    mode: KivyRenderMode = KivyRenderMode.SCREENSHOT,
 ) -> Dict[str, Any]:
     """
     Renders Kivy code in a Docker container and returns the result.
     Similar to Manim's render_animation_snippet but for Kivy apps.
     Optional width/height override the Xvfb screen size.
     """
-    logging.info("🚀 Starting Kivy snippet rendering")
+    logging.info(f"🚀 Starting Kivy {mode.value} rendering")
     dockerclient = aiodocker.Docker()
 
     # Prepare the Kivy script
-    kivy_script = prepare_kivy_script(code)
+    kivy_script = prepare_kivy_script(code, mode)
     logging.info(f"📝 Prepared Kivy script ({len(kivy_script)} chars)")
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -769,7 +780,7 @@ async def render_kivy_snippet(
                 )
                 await dockerclient.close()
                 return {
-                    "content": "⏰ Rendering timed out after 30 seconds. The Kivy app might be hanging.",
+                    "content": f"⏰ {mode.value.title()} rendering timed out after 30 seconds. The Kivy app might be hanging.",
                     "attachments": [
                         discord.File(
                             fp=io.BytesIO(logs_content.encode("utf-8")),
@@ -780,9 +791,17 @@ async def render_kivy_snippet(
 
             await dockerclient.close()
 
-            # Check if screenshot was generated
-            screenshot_path = Path(tmpdirname) / "kivy_screenshot.png"
-            logging.info(f"🔍 Checking for screenshot at: {screenshot_path}")
+            # Check for output files based on mode
+            if mode == KivyRenderMode.SCREENSHOT:
+                output_path = Path(tmpdirname) / "kivy_screenshot.png"
+                expected_filename = "kivy_app.png"
+                success_message = "🎉 Here's your Kivy app screenshot!"
+            else:  # VIDEO mode
+                output_path = Path(tmpdirname) / "kivy_video.mp4"
+                expected_filename = "kivy_app.mp4"
+                success_message = "🎉 Here's your Kivy app video!"
+
+            logging.info(f"🔍 Checking for {mode.value} output at: {output_path}")
 
             # Also check what files are actually in the temp directory
             temp_files = list(Path(tmpdirname).iterdir())
@@ -790,30 +809,32 @@ async def render_kivy_snippet(
                 f"📂 All files in temp dir: {[(f.name, f.stat().st_size if f.is_file() else 'dir') for f in temp_files]}"
             )
 
-            if screenshot_path.exists():
-                file_size = screenshot_path.stat().st_size
-                if not await validate_screenshot_size(file_size):
+            if output_path.exists():
+                file_size = output_path.stat().st_size
+                if not await validate_file_size(file_size):
                     return {
-                        "content": "Screenshot file is too large and may be malicious. Rendering aborted.",
+                        "content": f"{mode.value.title()} file is too large and may be malicious. Rendering aborted.",
                         "attachments": [],
                     }
 
-                metrics.observe_screenshot_bytes(file_size)
-                logging.info(f"✅ Screenshot found! Size: {file_size} bytes")
+                if mode == KivyRenderMode.SCREENSHOT:
+                    metrics.observe_screenshot_bytes(file_size)
+
+                logging.info(f"✅ {mode.value.title()} found! Size: {file_size} bytes")
                 return {
-                    "content": "🎉 Here's your Kivy app screenshot!",
+                    "content": success_message,
                     "attachments": [
-                        discord.File(screenshot_path, filename="kivy_app.png")
+                        discord.File(output_path, filename=expected_filename)
                     ],
                 }
             else:
-                logging.warning("❌ No screenshot file found")
+                logging.warning(f"❌ No {mode.value} file found")
 
-                # Return logs if no screenshot was generated
+                # Return logs if no output was generated
                 logs_content = "\n".join(kivy_logs[-50:])  # Last 50 lines
                 logging.info(f"📝 Returning logs ({len(logs_content)} chars)")
                 return {
-                    "content": "❌ No screenshot generated. Here are the logs:",
+                    "content": f"❌ No {mode.value} generated. Here are the logs:",
                     "attachments": [
                         discord.File(
                             fp=io.BytesIO(logs_content.encode("utf-8")),
@@ -840,14 +861,19 @@ def prepare_kivy_script(
 
 
 async def placeholder_render_call(
-    interaction: discord.Interaction, code: str, run_dir: Path
+    interaction: discord.Interaction,
+    code: str,
+    run_dir: Path,
+    mode: KivyRenderMode = KivyRenderMode.SCREENSHOT,
 ):
     """
     Main render function that orchestrates the Kivy rendering process.
     Uses pre-warmed containers for better performance.
     Forces cold run with custom Xvfb size if user code specifies Window.size or Config graphics size.
     """
-    logging.info(f"🎬 Starting render call for user {interaction.user.name}")
+    logging.info(
+        f"🎬 Starting {mode.value} render call for user {interaction.user.name}"
+    )
     logging.info(f"📝 Code length: {len(code)} characters")
     logging.info(f"📁 Run directory: {run_dir}")
 
@@ -862,20 +888,20 @@ async def placeholder_render_call(
                 f"📐 Detected explicit size from {src}: width={req_w}, height={req_h}"
             )
             result = await render_kivy_snippet(
-                interaction, code, width=req_w, height=req_h
+                interaction, code, width=req_w, height=req_h, mode=mode
             )
         else:
             # Try pre-warmed container first, fallback to original method
             if container_pool and container_pool.initialized:
-                result = await render_kivy_with_pool(interaction, code)
+                result = await render_kivy_with_pool(interaction, code, mode)
             else:
-                result = await render_kivy_snippet(interaction, code)
+                result = await render_kivy_snippet(interaction, code, mode=mode)
 
         success = bool(
             isinstance(result, dict)
             and result.get("attachments")
             and any(
-                getattr(f, "filename", "").endswith(".png")
+                getattr(f, "filename", "").endswith((".png", ".mp4"))
                 for f in result["attachments"]
             )
         )
@@ -887,7 +913,7 @@ async def placeholder_render_call(
         metrics.observe_duration(time.monotonic() - start)
 
         logging.info(
-            f"✅ Render {'successful' if success else 'failed'}, result: {result.get('content', 'No content')[:50]}..."
+            f"✅ {mode.value.title()} render {'successful' if success else 'failed'}, result: {result.get('content', 'No content')[:50]}..."
         )
         return result
 
@@ -905,15 +931,6 @@ class KivyPromptView(discord.ui.View):
         self.author_id = author_id
         self.message = None  # Store reference to the message
         self.rendered = rendered
-
-        # adjust the label if this is a post-render view
-        if self.rendered:
-            for child in self.children:
-                if (
-                    isinstance(child, discord.ui.Button)
-                    and child.label == "Yes, render"
-                ):
-                    child.label = "Render again"
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.data and interaction.data.get("custom_id") in {"go_away"}:
@@ -945,12 +962,25 @@ class KivyPromptView(discord.ui.View):
             except discord.HTTPException:
                 pass  # Message might be deleted already
 
-    @discord.ui.button(label="Yes, render", style=discord.ButtonStyle.success)
-    async def yes_render(
+    @discord.ui.button(label="📸 Screenshot", style=discord.ButtonStyle.success)
+    async def render_screenshot(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
+        await self._render_with_mode(
+            interaction, KivyRenderMode.SCREENSHOT, "screenshot"
+        )
+
+    @discord.ui.button(label="🎬 Video", style=discord.ButtonStyle.success)
+    async def render_video(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        await self._render_with_mode(interaction, KivyRenderMode.VIDEO, "video")
+
+    async def _render_with_mode(
+        self, interaction: discord.Interaction, mode: KivyRenderMode, mode_name: str
+    ):
         logging.info(
-            f"🎯 Render button clicked by {interaction.user.name} for message {self.source_message_id}"
+            f"🎯 {mode_name.title()} render button clicked by {interaction.user.name} for message {self.source_message_id}"
         )
 
         # Disable buttons during processing
@@ -982,7 +1012,7 @@ class KivyPromptView(discord.ui.View):
                 return
 
             logging.info(
-                f"📝 Using latest code snippet from message {self.source_message_id}, length={len(code)}"
+                f"📝 Using latest code snippet from message {self.source_message_id}, length={len(code)}, mode={mode_name}"
             )
 
             # Validate code for security
@@ -999,7 +1029,7 @@ class KivyPromptView(discord.ui.View):
             #     return
 
             run_dir = ensure_clean_run_dir(self.source_message_id)
-            result = await placeholder_render_call(interaction, code, run_dir)
+            result = await placeholder_render_call(interaction, code, run_dir, mode)
 
             # Send new result with fresh buttons
             view = KivyPromptView(
