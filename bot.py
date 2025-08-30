@@ -819,89 +819,16 @@ async def render_kivy_snippet(
             return {"content": f"❌ Rendering failed: {str(e)}", "attachments": []}
 
 
-def prepare_kivy_script(user_code: str) -> str:
+def prepare_kivy_script(
+    user_code: str,
+    mode: KivyRenderMode = KivyRenderMode.SCREENSHOT,
+) -> str:
     """
     Prepares the Kivy script for execution in Docker.
     Uses Window.on_flip to detect first frame, then schedules screenshot after first frame
     Draws an opaque background using the user's Window.clearcolor
-
     """
-    template = """
-from kivy.core.window import Window
-from kivy.clock import Clock
-from kivy.app import App
-from kivy.app import stopTouchApp
-from kivy.graphics import Color, Rectangle
-import os
-
-def _install_bg(*args):
-    if "MDApp" not in globals():
-        r, g, b, _ = Window.clearcolor  # respect user's color
-    else:
-        running_app = App.get_running_app()
-        r, g, b, _ = running_app.theme_cls.backgroundColor
-    with Window.canvas.before:
-        bg_color = Color(r, g, b, 1)      # force opaque alpha
-        bg_rect = Rectangle(pos=(0, 0), size=Window.size)
-    def _on_resize(*_):
-        bg_rect.size = Window.size
-    Window.bind(size=_on_resize)
-
-    Clock.schedule_once(take_screenshot_and_exit, 0)  # next frame to ensure it's rendered
-
-def take_screenshot_and_exit(_dt):
-    try:
-        target_path = '/work/kivy_screenshot.png'
-        print("Attempting to save screenshot to:", target_path)
-
-        # Always use Window.screenshot (reads GL RGB buffer)
-        actual_path = Window.screenshot(name=target_path)
-        print("Window.screenshot saved to:", actual_path)
-
-        # If Kivy auto-numbered (…0001.png), normalize to the expected filename
-        if actual_path and actual_path != target_path:
-            try:
-                if os.path.exists(target_path):
-                    os.remove(target_path)
-                os.replace(actual_path, target_path)
-                print("Renamed", actual_path, "->", target_path)
-            except Exception as e:
-                print("Rename failed:", e)
-
-        if os.path.exists(target_path):
-            file_size = os.path.getsize(target_path)
-            print("Screenshot saved successfully. File size:", file_size, "bytes")
-        else:
-            print("ERROR: Screenshot file not found at:", target_path)
-            try:
-                print("Files in /work:", os.listdir('/work'))
-            except Exception as e:
-                print("Failed to list /work:", e)
-
-    except Exception as e:
-        print("Screenshot failed:", e)
-        import traceback
-        traceback.print_exc()
-    finally:
-        running_app = App.get_running_app()
-        if running_app is not None:
-            running_app.stop()
-        else:
-            stopTouchApp()
-        exit()
-
-def arm_once(*_):
-    Window.unbind(on_flip=arm_once)
-    Clock.schedule_once(_install_bg, 0)               # draw opaque background into the on-screen buffer
-
-Window.bind(on_flip=arm_once)
-
-print("🚀 Starting user code...")
-# User code starts here
-{user_code}
-"""
-
-    return template.format(user_code=user_code)
+    return templates.create_script(user_code, mode)
 
 
 async def placeholder_render_call(
