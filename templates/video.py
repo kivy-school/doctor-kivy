@@ -110,6 +110,8 @@ async def trigger_actions_on_all_widgets(speed_up=1.0):
     )
     print("=" * 50)
 
+    await ak.sleep(1)
+
     for i, widget in enumerate(all_widgets):
         widget_type = type(widget).__name__
         print(str(i + 1) + ". " + widget_type + ": ", end="")
@@ -180,6 +182,8 @@ async def trigger_actions_on_all_widgets(speed_up=1.0):
         else:
             print("no action defined")
 
+        await ak.sleep(1)
+
         # TODO: RstDocument, Popup, Slider, Scatter, Spinner
 
 
@@ -202,6 +206,9 @@ async def record_kivy_demo_video(*_):
     optimal_speed = calculate_optimal_speed(max_duration=21.0)
     print("Calculated optimal speed_up:", round(optimal_speed, 2))
 
+    # Clear images
+    clear_images_folder()
+
     # Start video recording here
     # TODO verify if 1/60 is the right interval
     Clock.schedule_interval(export_to_png, 1 / 60)
@@ -216,8 +223,9 @@ async def record_kivy_demo_video(*_):
 
 def create_video_from_images():
     print("Creating video")
+    work_dir = os.path.join(os.getcwd(), "work")
     os.system(
-        "ffmpeg -y -framerate 60 -i /work/kivy_screenshot_%d.png -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p kivy_video.mp4"
+        f'ffmpeg -y -framerate 60 -i "{os.path.join(work_dir, "kivy_screenshot_%d.png")}" -c:v libx264 -profile:v high -crf 20 -pix_fmt yuv420p kivy_video.mp4'
     )
     running_app = App.get_running_app()
     if running_app is not None:
@@ -227,22 +235,25 @@ def create_video_from_images():
     exit()
 
 
-def clear_images_folder(self):
-    for file in os.listdir("/work"):
+def clear_images_folder():
+    for file in os.listdir(os.path.join(os.getcwd(), "work")):
         if file.endswith(".png"):
             print(f"Removing {file}")
-            os.remove(os.path.join("/work", file))
+            os.remove(os.path.join(os.getcwd(), "work", file))
 
 
 def export_to_png(self, *args):
-    image_number = len(os.listdir("/work")) + 1
+    image_number = len(os.listdir(os.path.join(os.getcwd(), "work"))) + 1
     root = App.get_running_app().root
-    root.export_to_png(f"/work/kivy_screenshot_{image_number}.png")
+    output_path = os.path.join(
+        os.getcwd(), "work", f"kivy_screenshot_{image_number}.png"
+    )
+    root.export_to_png(output_path)
 
 
 def arm_video_recording(*_):
     Window.unbind(on_flip=arm_video_recording)
-    Clock.schedule_once(lambda dt: ak.managed_start(record_kivy_demo_video()), 5)
+    Clock.schedule_once(lambda dt: ak.managed_start(record_kivy_demo_video()), 0)
 
 
 Window.bind(on_flip=arm_video_recording)
