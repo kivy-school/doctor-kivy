@@ -102,6 +102,14 @@ class KivyTemplates:
         else:
             raise ValueError(f"Unknown render mode: {mode}")
 
+        # Remove the import line from mode template since we're including base inline
+        mode_template = re.sub(
+            r"^from templates\.base import _install_bg\s*$",
+            "",
+            mode_template,
+            flags=re.MULTILINE,
+        )
+
         script = "\n\n".join(
             [
                 base_template,
