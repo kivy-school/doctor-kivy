@@ -242,7 +242,7 @@ def export_to_png(self, *args):
 
 def arm_video_recording(*_):
     Window.unbind(on_flip=arm_video_recording)
-    Clock.schedule_once(lambda dt: ak.managed_start(record_kivy_demo_video), 0)
+    Clock.schedule_once(lambda dt: ak.managed_start(record_kivy_demo_video()), 0)
 
 
 Window.bind(on_flip=arm_video_recording)

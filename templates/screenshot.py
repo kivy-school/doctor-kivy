@@ -63,7 +63,7 @@ async def fix_bg_and_take_screenshot(*_):
 
 def arm_once(*_):
     Window.unbind(on_flip=arm_once)
-    Clock.schedule_once(lambda dt: ak.managed_start(fix_bg_and_take_screenshot), 0)
+    Clock.schedule_once(lambda dt: ak.managed_start(fix_bg_and_take_screenshot()), 0)
 
 
 Window.bind(on_flip=arm_once)
