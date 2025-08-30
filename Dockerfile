@@ -9,8 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libmtdev1 \
     ffmpeg \
+    xclip \
+    xsel \
     && rm -rf /var/lib/apt/lists/*
- 
+
 # Install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
