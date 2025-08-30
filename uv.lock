@@ -110,23 +110,23 @@ wheels = [
 
 [[package]]
 name = "asyncgui"
-version = "0.6.3"
+version = "0.9.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/be/44/e697dc6f6e2e564c34135f743bf701ae223ac52885646f5a1bd66dcd8b0a/asyncgui-0.6.3.tar.gz", hash = "sha256:05de49c2221128d3530f010df98491f3553183ec8909d205a0c0250bee5d6e0c", size = 9177 }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/c5/faf9b660a0abd82f5009a14ae3f1ac7a025d03c0fd16639ed94c511262b6/asyncgui-0.9.3.tar.gz", hash = "sha256:46b283946a1814f600b502ee48082be9681097a72d8d011305e453d683a9064b", size = 9189 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/1c/00470dc25b1e63506fb3087389207571fdb094ce76861f9ce29e6832b57f/asyncgui-0.6.3-py3-none-any.whl", hash = "sha256:46723e65d8bf023e28d141f6a9d38634ef5b97a5236fafdaf80b47e13275a5eb", size = 9145 },
+    { url = "https://files.pythonhosted.org/packages/f8/71/e208826b9c0f21d2c314e443dfde72f6ee30f6a31a57c86fc80fcdf1a7c1/asyncgui-0.9.3-py3-none-any.whl", hash = "sha256:ed73fc00c68d7e0d804eb239f2ad9c319dce57a5d31342c19aadc18f44270103", size = 9201 },
 ]
 
 [[package]]
 name = "asynckivy"
-version = "0.6.4"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asyncgui" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/d8/7412fbb4584bf8389aa387a085ab02b49b4885387ac26187b30552f8c88a/asynckivy-0.6.4.tar.gz", hash = "sha256:58c34876a2422464f39df120b659c8b22e044852dd7ff94c5b9cb9dad84e902b", size = 15576 }
+sdist = { url = "https://files.pythonhosted.org/packages/67/eb/27979235821f3bd39c04c9459db8ff47d8d529b87686bcff8cedae3084ec/asynckivy-0.9.0.tar.gz", hash = "sha256:6358dbe49bffa3be8507395a256789e41e234cda8df5baa39747d66aae1f92e6", size = 16018 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c0/f3/11ed2f527e0fde70d2c693ff64e6893285d3ae4b08666e808929d6234579/asynckivy-0.6.4-py3-none-any.whl", hash = "sha256:4e26bb6dbc9768d5ca593bae7b36927c06e43915c44b02ddcaa64dc223a2d5e2", size = 18646 },
+    { url = "https://files.pythonhosted.org/packages/fb/93/05e5cd930424a1e4a3f51102c6bc1aeab50d0f3798b63eca5b094509ab82/asynckivy-0.9.0-py3-none-any.whl", hash = "sha256:cfc9e3f606dfb95fcd9611ee7be69e1da3ce6974679fbb61a6250e3a43ae3d0c", size = 19085 },
 ]
 
 [[package]]
@@ -389,6 +389,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiodocker" },
+    { name = "asynckivy" },
     { name = "discord-py" },
     { name = "docker" },
     { name = "kivy-reloader" },
@@ -400,10 +401,11 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiodocker", specifier = ">=0.24.0" },
+    { name = "asynckivy", specifier = ">=0.9.0" },
     { name = "discord-py", specifier = ">=2.5.2" },
     { name = "docker", specifier = ">=7.1.0" },
     { name = "kivy-reloader", specifier = ">=0.7.1" },
-    { name = "kivymd", url = "https://github.com/kivymd/KivyMD/archive/master.zip" },
+    { name = "kivymd", url = "https://github.com/FilipeMarch/KivyMD/archive/master.zip" },
     { name = "pillow", specifier = ">=11.3.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
 ]
@@ -635,18 +637,18 @@ wheels = [
 [[package]]
 name = "kivymd"
 version = "2.0.1.dev0"
-source = { url = "https://github.com/kivymd/KivyMD/archive/master.zip" }
+source = { url = "https://github.com/FilipeMarch/KivyMD/archive/master.zip" }
 dependencies = [
     { name = "asynckivy" },
     { name = "kivy" },
     { name = "materialyoucolor" },
     { name = "pillow" },
 ]
-sdist = { hash = "sha256:f6dd87020e485c08afc63b5ed80daa2e042d3b77cc52c0fb9e5ff2b392e5948b" }
+sdist = { hash = "sha256:0ffb4a3e31b30d7cdf13edd4e0ca3ab4a304639970fa2462cd24059547630ca1" }
 
 [package.metadata]
 requires-dist = [
-    { name = "asynckivy", specifier = ">=0.6,<0.7" },
+    { name = "asynckivy", specifier = ">=0.6" },
     { name = "black", marker = "extra == 'dev'" },
     { name = "coveralls", marker = "extra == 'dev'" },
     { name = "flake8", marker = "extra == 'dev'" },
