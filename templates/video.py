@@ -99,7 +99,7 @@ def calculate_optimal_speed(max_duration=21.0):
     return optimal_speed
 
 
-async def trigger_actions_on_all_widgets(speed_up=4.0):
+async def trigger_actions_on_all_widgets(speed_up=1.0):
     """Example method to demonstrate looping over all widgets and triggering actions"""
     estimated_duration = calculate_total_duration(speed_up)
     print("\nTriggering actions on", len(all_widgets), "widgets:")
