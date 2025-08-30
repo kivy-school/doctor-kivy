@@ -10,12 +10,12 @@ from templates.base import _install_bg
 
 all_widgets = []
 widget_durations = {
-    "Button": 0.8,
-    "ToggleButton": 0.8,
-    "CheckBox": 0.8,
-    "TabbedPanelHeader": 0.8,
+    "Button": 1.4,
+    "ToggleButton": 1.4,
+    "CheckBox": 1.4,
+    "TabbedPanelHeader": 1.4,
     "Switch": 0.8,
-    "TextInput": 2,
+    "TextInput": 2.25,
     "ScrollView": 1.5,  # Could be up to 3.0s if both x and y scroll
     "Video": 3.0,
 }
@@ -67,7 +67,7 @@ def discover_elements(widget=None):
 
 def calculate_total_duration(speed_up=1.0):
     """Calculate total duration for all widget actions"""
-    total_duration = 0.0
+    total_duration = 2.0
 
     for widget in all_widgets:
         widget_type = type(widget).__name__
@@ -189,9 +189,9 @@ async def trigger_actions_on_all_widgets(speed_up=1.0):
         else:
             print("no action defined")
 
-        await ak.sleep(1)
-
         # TODO: RstDocument, Popup, Slider, Scatter, Spinner
+
+    await ak.sleep(1)
 
 
 # Main orchestrator function
