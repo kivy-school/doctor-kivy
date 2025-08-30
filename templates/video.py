@@ -203,8 +203,8 @@ async def record_kivy_demo_video(*_):
     print("Calculated optimal speed_up:", round(optimal_speed, 2))
 
     # Start video recording here
-    # TODO verify if 1/15 is the right interval
-    Clock.schedule_interval(export_to_png, 1 / 15)
+    # TODO verify if 1/60 is the right interval
+    Clock.schedule_interval(export_to_png, 1 / 60)
 
     # Start recording and trigger interactions
     await trigger_actions_on_all_widgets(speed_up=optimal_speed)
