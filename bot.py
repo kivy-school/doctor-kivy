@@ -9,6 +9,7 @@ import sys
 import tarfile
 import tempfile
 import time
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -40,6 +41,84 @@ RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Container Pool Labels
 POOL_LABELS = {"app": "doctor-kivy", "role": "kivy-pool"}
+
+
+class KivyRenderMode(Enum):
+    """Rendering modes for Kivy applications"""
+
+    SCREENSHOT = "screenshot"
+    VIDEO = "video"
+
+
+class KivyTemplates:
+    """Template manager that combines base template with mode-specific templates"""
+
+    def __init__(self):
+        """
+        Initialize template manager.
+        """
+        self.templates_dir = Path("templates")
+        self._template_cache = {}
+
+    def _load_template(self, filename: str) -> str:
+        """Load a template file and cache it"""
+        if filename in self._template_cache:
+            return self._template_cache[filename]
+
+        template_path = self.templates_dir / filename
+
+        if not template_path.exists():
+            raise FileNotFoundError(f"Template file not found: {template_path}")
+
+        try:
+            with open(template_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            self._template_cache[filename] = content
+            return content
+        except Exception as e:
+            raise RuntimeError(f"Failed to load template {filename}: {e}")
+
+    def create_script(
+        self, user_code: str, mode: KivyRenderMode = KivyRenderMode.SCREENSHOT
+    ) -> str:
+        """
+        Create a complete Kivy script by combining base template with mode-specific code.
+
+        Args:
+            user_code: The user's Kivy application code
+            mode: Rendering mode (screenshot, or video)
+
+        Returns:
+            Complete Python script ready for execution
+        """
+        # Load the base template
+        base_template = self._load_template("base.py")
+
+        # Load the mode-specific template
+        if mode == KivyRenderMode.SCREENSHOT:
+            mode_template = self._load_template("screenshot.py")
+        elif mode == KivyRenderMode.VIDEO:
+            mode_template = self._load_template("video.py")
+        else:
+            raise ValueError(f"Unknown render mode: {mode}")
+
+        script = "\n\n".join(
+            [
+                base_template,
+                mode_template,
+                'print("🚀 Starting user code...")',
+                user_code,
+            ]
+        )
+
+        return script
+
+    def clear_cache(self):
+        """Clear template cache (useful for development)"""
+        self._template_cache.clear()
+
+
+templates = KivyTemplates()
 
 
 # Pre-warmed Container Pool Implementation
