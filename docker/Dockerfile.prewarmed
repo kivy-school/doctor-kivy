@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libmtdev1 \
     x11-utils \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
