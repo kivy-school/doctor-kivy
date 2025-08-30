@@ -212,8 +212,8 @@ async def record_kivy_demo_video(*_):
     # Discover all interactive elements
     discover_elements()
 
-    # Calculate optimal speed_up to fit within 21 seconds
-    optimal_speed = calculate_optimal_speed(max_duration=21.0)
+    # Calculate optimal speed_up to fit within 15 seconds
+    optimal_speed = calculate_optimal_speed(max_duration=15.0)
     print("Calculated optimal speed_up:", round(optimal_speed, 2))
 
     # Clear images
