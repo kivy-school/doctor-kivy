@@ -27,10 +27,24 @@ _t0 = None
 _t1 = None
 
 
+def get_root_widget():
+    """Get root widget whether using App or runTouchApp"""
+    app = App.get_running_app()
+    if app is not None:
+        return app.root
+    # Fallback for runTouchApp - get top-level widget from Window
+    if Window.children:
+        return Window.children[0]
+    return None
+
+
 def discover_elements(widget=None):
     """Recursively discover all widgets in the application and save them in a list"""
     if widget is None:
-        widget = App.get_running_app().root
+        widget = get_root_widget()
+        if widget is None:
+            print("ERROR: No root widget found!")
+            return
         print("Discovering all widgets in the application...")
 
     # Add current widget to the list
@@ -60,7 +74,8 @@ def discover_elements(widget=None):
             discover_elements(child)
 
     # Print summary when done with root discovery
-    if widget == App.get_running_app().root:
+    root = get_root_widget()
+    if root and widget == root:
         print("\nTotal widgets found:", len(all_widgets))
         print("Widgets saved in all_widgets list for later use")
 
@@ -220,8 +235,10 @@ async def record_kivy_demo_video(*_):
     clear_images_folder()
 
     # Warm up one export to load PIL plugins off-path
-    App.get_running_app().root.export_to_png(os.path.join(CAP_DIR, "_warmup.png"))
-    os.remove(os.path.join(CAP_DIR, "_warmup.png"))
+    root = get_root_widget()
+    if root:
+        root.export_to_png(os.path.join(CAP_DIR, "_warmup.png"))
+        os.remove(os.path.join(CAP_DIR, "_warmup.png"))
 
     _t0 = time.monotonic()
 
@@ -280,8 +297,9 @@ def export_to_png(dt):
     # dt is supplied by Kivy's Clock; do not scan the filesystem
     global _frame_idx
     _frame_idx += 1
-    root = App.get_running_app().root
-    root.export_to_png(os.path.join(CAP_DIR, f"kivy_screenshot_{_frame_idx}.png"))
+    root = get_root_widget()
+    if root:
+        root.export_to_png(os.path.join(CAP_DIR, f"kivy_screenshot_{_frame_idx}.png"))
 
 
 def arm_video_recording(*_):
