@@ -22,6 +22,7 @@ Discord Response
 
 **Key Technologies:**
 - Python 3.11+ with discord.py 2.5.2+
+- uv (Python dependency manager and runner)
 - Docker (aiodocker for async operations)
 - Kivy + KivyMD + asynckivy
 - Xvfb (headless X server for GUI rendering)
@@ -205,11 +206,11 @@ bash setup_docker.sh
 # Set Discord token
 echo "DISCORD_TOKEN=your_token" > .env
 
-# Run bot
-python bot.py
+# Run bot (uses uv for dependency management)
+uv run bot.py
 
-# Or use screen session
-python start_bot.py
+# Or use screen session (recommended for production)
+python3 start_bot.py
 ```
 
 ### Common Issues
@@ -248,7 +249,11 @@ Recent commits focus on:
 ## Entry Point
 
 ```bash
-python bot.py
+# Direct execution (requires uv)
+uv run bot.py
+
+# Production deployment (uses screen session)
+python3 start_bot.py
 ```
 
 **Initialization sequence:**
@@ -258,6 +263,8 @@ python bot.py
 4. On `on_ready`: Initialize container pool (2 containers)
 5. Start cleanup task (30min interval)
 6. Listen for messages
+
+**Note:** This project uses `uv` for Python dependency management. All bot execution commands should use `uv run` instead of plain `python`.
 
 ## Key Design Decisions
 
