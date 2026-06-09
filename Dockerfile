@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsdl2-2.0-0 \
     curl \
     libmtdev1 \
+    x11-utils \
     ffmpeg \
     xclip \
     xsel \
@@ -20,6 +21,10 @@ ENV PATH="/root/.local/bin:$PATH"
 # Create app directory
 WORKDIR /app
 
-# Initialize uv project and add dependencies
-RUN uv init
-RUN uv add kivy-reloader pillow
+# Install the same locked dependencies used by the pre-warmed renderer
+COPY pyproject.toml .
+COPY uv.lock ./
+RUN uv sync --frozen
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="/app/.venv"
