@@ -780,7 +780,7 @@ async def render_kivy_snippet(
                 )
                 await dockerclient.close()
                 return {
-                    "content": f"⏰ {mode.value.title()} rendering timed out after 30 seconds. The Kivy app might be hanging.",
+                    "content": f"⏰ {mode.value.title()} rendering timed out after 50 seconds. The Kivy app might be hanging.",
                     "attachments": [
                         discord.File(
                             fp=io.BytesIO(logs_content.encode("utf-8")),
